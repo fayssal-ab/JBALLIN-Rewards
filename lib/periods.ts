@@ -1,6 +1,7 @@
 import "server-only";
 import type { RowDataPacket } from "mysql2";
 import { getPool } from "./db";
+import { PERIOD_RESET_TIME_UTC } from "./constants";
 
 export interface Period {
   id: number;
@@ -135,8 +136,8 @@ export async function writeSyncLog(entry: SyncLogEntry): Promise<void> {
   );
 }
 
-/** Whole-day comparison, no time component per the API's date-only granularity. */
+/** Periods reset at PERIOD_RESET_TIME_UTC on end_at's date, not midnight. */
 export function hasPeriodEnded(period: Period, now: Date = new Date()): boolean {
-  const endOfDay = new Date(`${period.end_at}T23:59:59Z`);
-  return now.getTime() > endOfDay.getTime();
+  const resetInstant = new Date(`${period.end_at}T${PERIOD_RESET_TIME_UTC}Z`);
+  return now.getTime() > resetInstant.getTime();
 }

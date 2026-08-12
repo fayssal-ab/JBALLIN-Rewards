@@ -9,6 +9,7 @@ import {
   getRewardForRank,
 } from "@/lib/periods";
 import { Countdown } from "@/components/Countdown";
+import { PERIOD_RESET_TIME_UTC } from "@/lib/constants";
 
 // This must re-query the DB on every request, not get frozen into the build
 // — the whole point of an SSR leaderboard is that it reflects the last sync.
@@ -151,7 +152,7 @@ export default async function LeaderboardPage() {
               Time Left
             </p>
             <div className="mt-4">
-              <Countdown targetIso={`${period.end_at}T23:59:59Z`} />
+              <Countdown targetIso={`${period.end_at}T${PERIOD_RESET_TIME_UTC}Z`} />
             </div>
           </div>
 
