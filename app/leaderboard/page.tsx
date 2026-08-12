@@ -34,19 +34,6 @@ function trophySrc(rank: number): string | null {
   return existsSync(join(process.cwd(), "public", src)) ? src : null;
 }
 
-// No real avatars available — Rainbet's affiliate API only returns
-// username/id/wagered_amount, no profile picture. A monogram avatar beats
-// either faking a photo or leaving a blank circle.
-function Avatar({ username, size = "h-14 w-14 text-lg" }: { username: string; size?: string }) {
-  return (
-    <div
-      className={`flex items-center justify-center rounded-full border border-white/15 bg-gradient-to-br from-zinc-800 to-zinc-900 font-display text-white/70 ${size}`}
-    >
-      {username[0]?.toUpperCase()}
-    </div>
-  );
-}
-
 export default async function LeaderboardPage() {
   const period = await getActivePeriod();
 
@@ -139,8 +126,6 @@ export default async function LeaderboardPage() {
                     </div>
                   ) : null}
 
-                  <Avatar username={masked} />
-
                   <p className="mt-3 font-semibold text-white">{masked}</p>
 
                   <p className="font-display mt-3 text-3xl text-emerald-300">
@@ -180,12 +165,6 @@ export default async function LeaderboardPage() {
                 >
                   <span className="w-6 shrink-0 text-sm font-semibold text-white/40 sm:w-8">
                     #{entry.rank}
-                  </span>
-                  <span className="hidden shrink-0 sm:block">
-                    <Avatar
-                      username={maskUsername(entry.username)}
-                      size="h-9 w-9 text-sm"
-                    />
                   </span>
                   <span className="flex-1 truncate font-medium text-white/90">
                     {maskUsername(entry.username)}
