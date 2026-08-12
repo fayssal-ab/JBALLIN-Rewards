@@ -39,9 +39,16 @@ export function getPool(): Pool {
     // Set for managed hosts that require TLS (e.g. Aiven's "SSL mode:
     // REQUIRED"). Unset for local dev — plain local MySQL has no cert to
     // point at.
-    ssl: process.env.DB_SSL_CA_PATH
-      ? { ca: readFileSync(process.env.DB_SSL_CA_PATH, "utf8") }
-      : undefined,
+    //
+    // DB_SSL_CA (cert content) takes priority — that's what hosting
+    // platforms need, since DB_SSL_CA_PATH points at a local file
+    // (certs/aiven-ca.pem) that only exists on this machine and isn't part
+    // of the deployed serverless function's filesystem.
+    ssl: process.env.DB_SSL_CA
+      ? { ca: process.env.DB_SSL_CA }
+      : process.env.DB_SSL_CA_PATH
+        ? { ca: readFileSync(process.env.DB_SSL_CA_PATH, "utf8") }
+        : undefined,
   });
 
   return pool;
