@@ -4,8 +4,10 @@ import type { CSSProperties } from "react";
 // its original Sass `multiple-box-shadow($n)` random-position generator).
 // Three star sizes drift downward at different speeds via the same
 // `animStar` keyframe (see globals.css) for a parallax-depth illusion.
-// Counts are toned down from the original 700/200/100 to keep the
-// generated box-shadow list (and thus HTML payload) reasonable.
+// Counts are toned down hard from the original 700/200/100 (and from an
+// earlier 400/150/80 pass) — each star is ~15-20 bytes of generated
+// box-shadow HTML with nothing to compress well, so this is pure page-weight
+// for a decorative effect. 150/50/25 still reads as a full starfield.
 function multipleBoxShadow(n: number, maxCoord = 2000): string {
   const shadows: string[] = [];
   for (let i = 0; i < n; i++) {
@@ -17,9 +19,9 @@ function multipleBoxShadow(n: number, maxCoord = 2000): string {
 }
 
 export function AnimatedBackground() {
-  const shadowsSmall = multipleBoxShadow(400);
-  const shadowsMedium = multipleBoxShadow(150);
-  const shadowsBig = multipleBoxShadow(80);
+  const shadowsSmall = multipleBoxShadow(150);
+  const shadowsMedium = multipleBoxShadow(50);
+  const shadowsBig = multipleBoxShadow(25);
 
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#0b0b0e]">

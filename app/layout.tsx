@@ -16,10 +16,43 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
+const SITE_URL = "https://jbalin.netlify.app";
+const TITLE = "JBALLIN Rewards";
+const DESCRIPTION =
+  "Sign up under JBALLIN's Rainbet code, wager, and compete on the leaderboard for a share of the prize pool.";
+
 export const metadata: Metadata = {
-  title: "JBALLIN Rewards",
-  description:
-    "Sign up under JBALLIN's Rainbet code, wager, and compete on the leaderboard for a share of the prize pool.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: TITLE,
+    template: `%s | ${TITLE}`,
+  },
+  description: DESCRIPTION,
+  keywords: [
+    "JBALLIN",
+    "Rainbet",
+    "Rainbet code",
+    "Kick",
+    "wager leaderboard",
+    "crypto casino leaderboard",
+    "rainbet leaderboard",
+  ],
+  authors: [{ name: "JBALLIN" }],
+  robots: { index: true, follow: true },
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    siteName: TITLE,
+    title: TITLE,
+    description: DESCRIPTION,
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
