@@ -1,0 +1,274 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-anton);
+}
+
+:root {
+  --background: #0b0b0e;
+  --foreground: #f5f7fa;
+}
+
+/* Tailwind puts its utilities in @layer utilities. Cascade Layers give ANY
+   layered rule priority over unlayered ones regardless of specificity, so
+   these base rules must be layered too — otherwise a plain `a { color:
+   inherit }` here silently beats a `text-black` utility on a link (exactly
+   what made the white "Sign Up" button's text disappear on its white bg). */
+@layer base {
+  html {
+    height: 100%;
+    color-scheme: dark;
+  }
+
+  html,
+  body {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  body {
+    min-height: 100%;
+    color: var(--foreground);
+    background: var(--background);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  a {
+    color: inherit;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.shimmer-effect {
+  animation: shimmer 2.5s infinite;
+}
+
+@keyframes float-a {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(40px, -50px) scale(1.15);
+  }
+}
+
+@keyframes float-b {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-50px, 40px) scale(0.9);
+  }
+}
+
+@keyframes float-c {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(30px, 30px) scale(1.1);
+  }
+}
+
+@keyframes shimmer-text {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.animate-float-a {
+  animation: float-a 14s ease-in-out infinite;
+}
+
+.animate-float-b {
+  animation: float-b 18s ease-in-out infinite;
+}
+
+.animate-float-c {
+  animation: float-c 16s ease-in-out infinite;
+}
+
+.animate-shimmer-text {
+  background-size: 200% 100%;
+  animation: shimmer-text 6s linear infinite;
+}
+
+@keyframes particle-drift-a {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate(24px, -30px) rotate(12deg);
+    opacity: 0.9;
+  }
+}
+
+@keyframes particle-drift-b {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate(-28px, 26px) rotate(-10deg);
+    opacity: 0.9;
+  }
+}
+
+.animate-particle-drift {
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 12px rgba(52, 211, 153, 0.15);
+    border-color: rgba(52, 211, 153, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 28px rgba(52, 211, 153, 0.4);
+    border-color: rgba(52, 211, 153, 0.4);
+  }
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 3.5s ease-in-out infinite;
+}
+
+@keyframes grid-scroll {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 64px;
+  }
+}
+
+.grid-floor-wrap {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 60vh;
+  overflow: hidden;
+  perspective: 400px;
+  perspective-origin: 50% 100%;
+  -webkit-mask-image: linear-gradient(to top, black 35%, transparent 95%);
+  mask-image: linear-gradient(to top, black 35%, transparent 95%);
+}
+
+.grid-floor {
+  position: absolute;
+  inset: -100% -50% -50% -50%;
+  background-image:
+    linear-gradient(rgba(52, 211, 153, 0.55) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(52, 211, 153, 0.55) 1px, transparent 1px);
+  background-size: 64px 64px;
+  transform: rotateX(75deg);
+  transform-origin: bottom;
+  animation: grid-scroll 5s linear infinite;
+}
+
+.grid-floor-horizon {
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(52, 211, 153, 0.8),
+    transparent
+  );
+  box-shadow: 0 0 20px 2px rgba(52, 211, 153, 0.6);
+}
+
+/* Pure CSS parallax pixel stars — box-shadow lists come from
+   AnimatedBackground.tsx as --shadows-small/medium/big custom properties. */
+@keyframes animStar {
+  from {
+    transform: translateY(0px);
+  }
+  to {
+    transform: translateY(-2000px);
+  }
+}
+
+#stars,
+#stars2,
+#stars3 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: transparent;
+}
+
+#stars {
+  width: 1px;
+  height: 1px;
+  box-shadow: var(--shadows-small);
+  animation: animStar 50s linear infinite;
+}
+#stars::after {
+  content: " ";
+  position: absolute;
+  top: 2000px;
+  width: 1px;
+  height: 1px;
+  background: transparent;
+  box-shadow: var(--shadows-small);
+}
+
+#stars2 {
+  width: 2px;
+  height: 2px;
+  box-shadow: var(--shadows-medium);
+  animation: animStar 100s linear infinite;
+}
+#stars2::after {
+  content: " ";
+  position: absolute;
+  top: 2000px;
+  width: 2px;
+  height: 2px;
+  background: transparent;
+  box-shadow: var(--shadows-medium);
+}
+
+#stars3 {
+  width: 3px;
+  height: 3px;
+  box-shadow: var(--shadows-big);
+  animation: animStar 150s linear infinite;
+}
+#stars3::after {
+  content: " ";
+  position: absolute;
+  top: 2000px;
+  width: 3px;
+  height: 3px;
+  background: transparent;
+  box-shadow: var(--shadows-big);
+}
