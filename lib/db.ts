@@ -40,15 +40,19 @@ export function getPool(): Pool {
     // REQUIRED"). Unset for local dev — plain local MySQL has no cert to
     // point at.
     //
-    // DB_SSL_CA (cert content) takes priority — that's what hosting
-    // platforms need, since DB_SSL_CA_PATH points at a local file
-    // (certs/aiven-ca.pem) that only exists on this machine and isn't part
-    // of the deployed serverless function's filesystem.
-    ssl: process.env.DB_SSL_CA
-      ? { ca: process.env.DB_SSL_CA }
-      : process.env.DB_SSL_CA_PATH
-        ? { ca: readFileSync(process.env.DB_SSL_CA_PATH, "utf8") }
-        : undefined,
+    // DB_SSL_CA_BASE64 is the one to use on a hosting platform: a PEM cert
+    // is many lines, and bulk/.env-style import UIs (Netlify's included)
+    // reliably mangle multi-line env var values — that's what caused
+    // "self-signed certificate in certificate chain" here. Base64 collapses
+    // it to a single line with no newlines left to lose, so there's nothing
+    // for the UI to mangle.
+    ssl: process.env.DB_SSL_CA_BASE64
+      ? { ca: Buffer.from(process.env.DB_SSL_CA_BASE64, "base64").toString("utf8") }
+      : process.env.DB_SSL_CA
+        ? { ca: process.env.DB_SSL_CA }
+        : process.env.DB_SSL_CA_PATH
+          ? { ca: readFileSync(process.env.DB_SSL_CA_PATH, "utf8") }
+          : undefined,
   });
 
   return pool;
