@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { KICK_URL, TWITTER_URL, DISCORD_URL, YOUTUBE_URL } from "@/lib/constants";
+import {
+  KICK_URL,
+  TWITTER_URL,
+  DISCORD_URL,
+  YOUTUBE_URL,
+  RAINBET_URL,
+} from "@/lib/constants";
 import { SocialIcon } from "@/components/SocialIcon";
 
 const PLATFORM_LINKS = [
@@ -35,6 +41,21 @@ export function SiteFooter() {
                 </a>
               ))}
             </div>
+
+            <a
+              href={RAINBET_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative mt-5 inline-flex items-center gap-2 rounded-lg border border-emerald-400/30 bg-emerald-400/5 px-4 py-2 transition-colors hover:border-emerald-400/60 hover:bg-emerald-400/10"
+            >
+              <span className="text-sm text-white/50">Use code:</span>
+              <span className="font-display text-sm tracking-wide text-emerald-300">
+                JBALLIN
+              </span>
+              <span className="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md border border-white/10 bg-black/90 px-3 py-1.5 text-xs text-white/80 opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
+                Play at Rainbet with code JBALLIN
+              </span>
+            </a>
           </div>
 
           <div>
