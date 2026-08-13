@@ -8,6 +8,7 @@ const NAV_LINKS = [
   { label: "Leaderboard", href: "/leaderboard" },
   { label: "Milestones", href: "/milestones" },
   { label: "Bonus Hunt", href: "/bonus-hunt" },
+  { label: "Tournaments", href: "/tournaments" },
   { label: "Referral Program", href: "/referral" },
   { label: "Instructions", href: "/instructions" },
 ];
@@ -16,7 +17,7 @@ export function MobileNav() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="md:hidden">
+    <div className="lg:hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

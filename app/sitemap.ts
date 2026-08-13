@@ -8,6 +8,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/leaderboard",
     "/milestones",
     "/bonus-hunt",
+    "/tournaments",
     "/referral",
     "/instructions",
   ];
