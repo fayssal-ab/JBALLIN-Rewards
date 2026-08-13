@@ -74,7 +74,16 @@ export default async function LeaderboardPage() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-32">
       <div className="text-center">
-        <p className="text-xs tracking-[0.3em] text-white/40 uppercase">
+        <div className="relative mx-auto h-10 w-40">
+          <Image
+            src="/rainbet/rainbet-logo.png"
+            alt="Rainbet"
+            fill
+            sizes="160px"
+            className="object-contain"
+          />
+        </div>
+        <p className="mt-6 text-xs tracking-[0.3em] text-white/40 uppercase">
           {periodLabel} — live — top 10
         </p>
         <h1 className="font-display mt-2 text-4xl uppercase text-white sm:text-5xl">
