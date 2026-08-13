@@ -12,6 +12,7 @@ const PLATFORM_LINKS = [
   { label: "Home", href: "/" },
   { label: "Leaderboard", href: "/leaderboard" },
   { label: "Milestones", href: "/milestones" },
+  { label: "Bonus Hunt", href: "/bonus-hunt" },
 ];
 
 const SOCIAL_LINKS = [
