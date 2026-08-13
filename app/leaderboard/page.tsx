@@ -21,6 +21,12 @@ const currency = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 
+const currencyWhole = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
+
 const PODIUM_STYLES = [
   "border-emerald-400/50 shadow-[0_0_35px_rgba(52,211,153,0.25)] sm:order-2",
   "border-white/20 sm:order-1",
@@ -74,15 +80,18 @@ export default async function LeaderboardPage() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-32">
       <div className="text-center">
-        <div className="relative mx-auto h-10 w-40">
+        <div className="relative mx-auto h-16 w-64 sm:h-20 sm:w-80">
           <Image
             src="/rainbet/rainbet-logo.png"
             alt="Rainbet"
             fill
-            sizes="160px"
+            sizes="320px"
             className="object-contain"
           />
         </div>
+        <p className="font-display mt-4 text-6xl text-emerald-300 sm:text-7xl">
+          {currencyWhole.format(Number(period.prize_pool))}
+        </p>
         <p className="mt-6 text-xs tracking-[0.3em] text-white/40 uppercase">
           {periodLabel} — live — top 10
         </p>
