@@ -21,15 +21,13 @@ async function callApi(body: object) {
 function SlotBox({
   name,
   highlight = false,
-  editable = false,
   onSave,
   onDeclareWinner,
   delay = 0,
 }: {
   name: string | null;
   highlight?: boolean;
-  editable?: boolean;
-  onSave?: (value: string | null) => void;
+  onSave: (value: string | null) => void;
   /** Copies this slot's name into the next round and advances the bracket. */
   onDeclareWinner?: () => void;
   delay?: number;
@@ -37,7 +35,7 @@ function SlotBox({
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(name ?? "");
 
-  if (editable && editing) {
+  if (editing) {
     return (
       <div
         className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 ${
@@ -51,7 +49,7 @@ function SlotBox({
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               setEditing(false);
-              onSave?.(value || null);
+              onSave(value || null);
             }
           }}
           className="w-full bg-transparent text-sm text-white focus:outline-none"
@@ -60,7 +58,7 @@ function SlotBox({
         <button
           onClick={() => {
             setEditing(false);
-            onSave?.(value || null);
+            onSave(value || null);
           }}
           className="shrink-0 text-xs text-emerald-300"
         >
@@ -86,7 +84,7 @@ function SlotBox({
         <p className="text-sm font-semibold text-white">{name ?? "TBD"}</p>
         {!name ? <p className="text-[11px] text-white/30">—</p> : null}
       </div>
-      {editable && name && onDeclareWinner ? (
+      {name && onDeclareWinner ? (
         <button
           onClick={onDeclareWinner}
           title="Advance as winner"
@@ -96,15 +94,13 @@ function SlotBox({
           ✓
         </button>
       ) : null}
-      {editable ? (
-        <button
-          onClick={() => setEditing(true)}
-          className="shrink-0 text-white/30 hover:text-emerald-300"
-          aria-label="Edit slot"
-        >
-          ✎
-        </button>
-      ) : null}
+      <button
+        onClick={() => setEditing(true)}
+        className="shrink-0 text-white/30 hover:text-emerald-300"
+        aria-label="Edit slot"
+      >
+        ✎
+      </button>
     </div>
   );
 }
@@ -144,11 +140,9 @@ function nextSlot(round: Round, slotIndex: number): { round: Round; index: numbe
 export function TournamentBoard({
   slots,
   prize,
-  isAdmin,
 }: {
   slots: TournamentSlots;
   prize: string;
-  isAdmin: boolean;
 }) {
   const router = useRouter();
   const [prizeInput, setPrizeInput] = useState(prize);
@@ -191,47 +185,34 @@ export function TournamentBoard({
     <div>
       {/* Prize */}
       <div className="mt-6 text-center">
-        {isAdmin ? (
-          <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
-            <span className="text-white/40">Winner prize:</span>
-            <input
-              value={prizeInput}
-              onChange={(e) => setPrizeInput(e.target.value)}
-              className="w-24 rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-white"
-            />
-            <button
-              onClick={savePrize}
-              disabled={busy}
-              className="rounded-md border border-emerald-400/30 px-3 py-1 text-emerald-300 hover:bg-emerald-400/10 disabled:opacity-50"
-            >
-              Save
-            </button>
-            <button
-              onClick={resetBracket}
-              disabled={busy}
-              className="rounded-md border border-red-400/30 px-3 py-1 text-red-300 hover:bg-red-400/10 disabled:opacity-50"
-            >
-              Reset bracket
-            </button>
-          </div>
-        ) : Number(prize) > 0 ? (
-          <>
-            <p className="font-display animate-shimmer-text bg-gradient-to-r from-white via-emerald-300 to-white bg-clip-text text-4xl text-transparent">
-              {currency.format(Number(prize))}
-            </p>
-            <p className="mt-1 text-[10px] tracking-[0.3em] text-white/40 uppercase">
-              Winner Prize
-            </p>
-          </>
-        ) : null}
+        <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
+          <span className="text-white/40">Winner prize:</span>
+          <input
+            value={prizeInput}
+            onChange={(e) => setPrizeInput(e.target.value)}
+            className="w-24 rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-white"
+          />
+          <button
+            onClick={savePrize}
+            disabled={busy}
+            className="rounded-md border border-emerald-400/30 px-3 py-1 text-emerald-300 hover:bg-emerald-400/10 disabled:opacity-50"
+          >
+            Save
+          </button>
+          <button
+            onClick={resetBracket}
+            disabled={busy}
+            className="rounded-md border border-red-400/30 px-3 py-1 text-red-300 hover:bg-red-400/10 disabled:opacity-50"
+          >
+            Reset bracket
+          </button>
+        </div>
       </div>
 
-      {isAdmin ? (
-        <p className="mx-auto mt-4 max-w-sm text-center text-[11px] text-white/30">
-          Click ✓ on a name to advance it as the winner. Click ✎ to
-          rename a slot.
-        </p>
-      ) : null}
+      <p className="mx-auto mt-4 max-w-sm text-center text-[11px] text-white/30">
+        Click ✓ on a name to advance it as the winner. Click ✎ to rename a
+        slot.
+      </p>
 
       <div className="mt-10 flex flex-col items-start gap-10 overflow-x-auto pb-4 lg:flex-row lg:justify-center">
         {/* Round of 8 */}
@@ -245,7 +226,6 @@ export function TournamentBoard({
                 a={pair * 2}
                 b={pair * 2 + 1}
                 nameAt={nameAt}
-                editable={isAdmin}
                 save={save}
                 declareWinner={declareWinner}
                 delay={pair * 80}
@@ -269,7 +249,6 @@ export function TournamentBoard({
                 a={pair * 2}
                 b={pair * 2 + 1}
                 nameAt={nameAt}
-                editable={isAdmin}
                 save={save}
                 declareWinner={declareWinner}
                 delay={320 + pair * 80}
@@ -291,7 +270,6 @@ export function TournamentBoard({
               a={0}
               b={1}
               nameAt={nameAt}
-              editable={isAdmin}
               save={save}
               declareWinner={declareWinner}
               highlight
@@ -310,20 +288,9 @@ export function TournamentBoard({
           <span className="animate-crown-bounce inline-block text-4xl">
             👑
           </span>
-          {isAdmin ? (
-            <div className="mt-3">
-              <SlotBox
-                name={champion}
-                highlight
-                editable
-                onSave={(value) => save(4, 0, value)}
-              />
-            </div>
-          ) : (
-            <p className="font-display animate-shimmer-text mt-3 bg-gradient-to-r from-white via-emerald-300 to-white bg-clip-text text-2xl uppercase text-transparent">
-              {champion ?? "TBD"}
-            </p>
-          )}
+          <div className="mt-3">
+            <SlotBox name={champion} highlight onSave={(value) => save(4, 0, value)} />
+          </div>
         </div>
       </div>
     </div>
@@ -335,7 +302,6 @@ function RealMatch({
   a,
   b,
   nameAt,
-  editable,
   save,
   declareWinner,
   highlight = false,
@@ -345,7 +311,6 @@ function RealMatch({
   a: number;
   b: number;
   nameAt: (round: Round, index: number) => string | null;
-  editable: boolean;
   save: (round: Round, slotIndex: number, name: string | null) => void;
   declareWinner: (round: Round, slotIndex: number) => void;
   highlight?: boolean;
@@ -356,7 +321,6 @@ function RealMatch({
       <SlotBox
         name={nameAt(round, a)}
         highlight={highlight}
-        editable={editable}
         onSave={(value) => save(round, a, value)}
         onDeclareWinner={() => declareWinner(round, a)}
         delay={delay}
@@ -365,7 +329,6 @@ function RealMatch({
       <SlotBox
         name={nameAt(round, b)}
         highlight={highlight}
-        editable={editable}
         onSave={(value) => save(round, b, value)}
         onDeclareWinner={() => declareWinner(round, b)}
         delay={delay + 40}

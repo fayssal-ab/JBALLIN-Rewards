@@ -12,8 +12,6 @@ const PLATFORM_LINKS = [
   { label: "Home", href: "/" },
   { label: "Leaderboard", href: "/leaderboard" },
   { label: "Milestones", href: "/milestones" },
-  { label: "Bonus Hunt", href: "/bonus-hunt" },
-  { label: "Tournaments", href: "/tournaments" },
 ];
 
 const SOCIAL_LINKS = [
@@ -124,17 +122,22 @@ export function SiteFooter() {
 
         <div className="mt-8 flex flex-col items-center gap-2 border-t border-white/5 pt-6 text-xs text-white/30 sm:flex-row sm:justify-between">
           <p>© {new Date().getFullYear()} JBALLIN Rewards. All rights reserved.</p>
-          <p>
-            Slot data by{" "}
-            <a
-              href="https://slot.report"
-              target="_blank"
-              rel="noopener"
-              className="hover:text-white/60"
-            >
-              slot.report
-            </a>
-          </p>
+          <div className="flex items-center gap-4">
+            <p>
+              Slot data by{" "}
+              <a
+                href="https://slot.report"
+                target="_blank"
+                rel="noopener"
+                className="hover:text-white/60"
+              >
+                slot.report
+              </a>
+            </p>
+            <Link href="/admin" className="hover:text-white/60">
+              Admin
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

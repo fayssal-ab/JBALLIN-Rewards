@@ -93,11 +93,9 @@ function SlotNameInput({
 export function BonusHuntBoard({
   entries,
   startingBalance,
-  isAdmin,
 }: {
   entries: BonusHuntEntry[];
   startingBalance: string;
-  isAdmin: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -175,30 +173,28 @@ export function BonusHuntBoard({
 
   return (
     <div>
-      {isAdmin ? (
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-xs">
-          <span className="text-white/40">Starting balance:</span>
-          <input
-            value={balanceInput}
-            onChange={(e) => setBalanceInput(e.target.value)}
-            className="w-24 rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-white"
-          />
-          <button
-            onClick={saveBalance}
-            disabled={busy}
-            className="rounded-md border border-emerald-400/30 px-3 py-1 text-emerald-300 hover:bg-emerald-400/10 disabled:opacity-50"
-          >
-            Save
-          </button>
-          <button
-            onClick={resetHunt}
-            disabled={busy}
-            className="rounded-md border border-red-400/30 px-3 py-1 text-red-300 hover:bg-red-400/10 disabled:opacity-50"
-          >
-            Reset hunt
-          </button>
-        </div>
-      ) : null}
+      <div className="mt-6 flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-white/40">Starting balance:</span>
+        <input
+          value={balanceInput}
+          onChange={(e) => setBalanceInput(e.target.value)}
+          className="w-24 rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-white"
+        />
+        <button
+          onClick={saveBalance}
+          disabled={busy}
+          className="rounded-md border border-emerald-400/30 px-3 py-1 text-emerald-300 hover:bg-emerald-400/10 disabled:opacity-50"
+        >
+          Save
+        </button>
+        <button
+          onClick={resetHunt}
+          disabled={busy}
+          className="rounded-md border border-red-400/30 px-3 py-1 text-red-300 hover:bg-red-400/10 disabled:opacity-50"
+        >
+          Reset hunt
+        </button>
+      </div>
 
       {/* Stats */}
       <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
@@ -235,7 +231,7 @@ export function BonusHuntBoard({
                 <th className="px-6 py-3 text-right font-medium">Bet</th>
                 <th className="px-6 py-3 text-right font-medium">Payout</th>
                 <th className="px-6 py-3 text-right font-medium">Mult.</th>
-                {isAdmin ? <th className="px-6 py-3" /> : null}
+                <th className="px-6 py-3" />
               </tr>
             </thead>
             <tbody>
@@ -255,37 +251,29 @@ export function BonusHuntBoard({
                       {currency.format(Number(b.bet))}
                     </td>
                     <td className="px-6 py-3 text-right">
-                      {isAdmin ? (
-                        <input
-                          defaultValue={b.payout ?? ""}
-                          placeholder="—"
-                          onBlur={(e) => {
-                            if (e.target.value !== (b.payout ?? "")) {
-                              setPayout(b.id, e.target.value);
-                            }
-                          }}
-                          className="w-24 rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-right text-white"
-                        />
-                      ) : b.payout !== null ? (
-                        currency.format(Number(b.payout))
-                      ) : (
-                        "—"
-                      )}
+                      <input
+                        defaultValue={b.payout ?? ""}
+                        placeholder="—"
+                        onBlur={(e) => {
+                          if (e.target.value !== (b.payout ?? "")) {
+                            setPayout(b.id, e.target.value);
+                          }
+                        }}
+                        className="w-24 rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-right text-white"
+                      />
                     </td>
                     <td className="px-6 py-3 text-right font-semibold text-emerald-300">
                       {mult !== null ? `${mult.toFixed(1)}x` : "—"}
                     </td>
-                    {isAdmin ? (
-                      <td className="px-6 py-3 text-right">
-                        <button
-                          onClick={() => removeEntry(b.id)}
-                          disabled={busy}
-                          className="text-white/30 hover:text-red-400"
-                        >
-                          ✕
-                        </button>
-                      </td>
-                    ) : null}
+                    <td className="px-6 py-3 text-right">
+                      <button
+                        onClick={() => removeEntry(b.id)}
+                        disabled={busy}
+                        className="text-white/30 hover:text-red-400"
+                      >
+                        ✕
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -294,37 +282,35 @@ export function BonusHuntBoard({
         </div>
       )}
 
-      {isAdmin ? (
-        <form
-          onSubmit={addEntry}
-          className="mt-6 flex flex-wrap items-center justify-center gap-2"
+      <form
+        onSubmit={addEntry}
+        className="mt-6 flex flex-wrap items-center gap-2"
+      >
+        <SlotNameInput
+          value={form.slotName}
+          onChange={(slotName) => setForm({ ...form, slotName })}
+          onPick={(slot) => setForm({ ...form, slotName: slot.name, provider: slot.provider })}
+        />
+        <input
+          value={form.provider}
+          onChange={(e) => setForm({ ...form, provider: e.target.value })}
+          placeholder="Provider (optional)"
+          className="w-40 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white"
+        />
+        <input
+          value={form.bet}
+          onChange={(e) => setForm({ ...form, bet: e.target.value })}
+          placeholder="Bet"
+          className="w-24 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white"
+        />
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded-md bg-emerald-400 px-4 py-2 text-sm font-semibold text-black disabled:opacity-50"
         >
-          <SlotNameInput
-            value={form.slotName}
-            onChange={(slotName) => setForm({ ...form, slotName })}
-            onPick={(slot) => setForm({ ...form, slotName: slot.name, provider: slot.provider })}
-          />
-          <input
-            value={form.provider}
-            onChange={(e) => setForm({ ...form, provider: e.target.value })}
-            placeholder="Provider (optional)"
-            className="w-40 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white"
-          />
-          <input
-            value={form.bet}
-            onChange={(e) => setForm({ ...form, bet: e.target.value })}
-            placeholder="Bet"
-            className="w-24 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white"
-          />
-          <button
-            type="submit"
-            disabled={busy}
-            className="rounded-md bg-emerald-400 px-4 py-2 text-sm font-semibold text-black disabled:opacity-50"
-          >
-            Add bonus
-          </button>
-        </form>
-      ) : null}
+          Add bonus
+        </button>
+      </form>
     </div>
   );
 }

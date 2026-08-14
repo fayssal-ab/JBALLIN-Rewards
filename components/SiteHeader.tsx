@@ -12,8 +12,6 @@ const NAV_LINKS = [
   { label: "Home", href: "/" },
   { label: "Leaderboard", href: "/leaderboard" },
   { label: "Milestones", href: "/milestones" },
-  { label: "Bonus Hunt", href: "/bonus-hunt" },
-  { label: "Tournaments", href: "/tournaments" },
   { label: "Referral Program", href: "/referral" },
   { label: "Instructions", href: "/instructions" },
 ];
@@ -42,7 +40,7 @@ export function SiteHeader() {
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-0.5 lg:flex">
+        <nav className="hidden items-center gap-0.5 md:flex">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
