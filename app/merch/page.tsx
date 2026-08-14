@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getActiveMerchItems } from "@/lib/merch";
 import { MerchGrid } from "@/components/MerchGrid";
+import { Icon, type IconName } from "@/components/Icon";
 
 export const dynamic = "force-dynamic";
 
@@ -9,10 +10,10 @@ export const metadata: Metadata = {
   description: "Support JBALLIN directly — official merch, shipped worldwide.",
 };
 
-const FEATURES = [
-  { icon: "🎯", label: "Supports the channel directly" },
-  { icon: "📦", label: "Printed on demand, shipped worldwide" },
-  { icon: "⚡", label: "New drops added regularly" },
+const FEATURES: { icon: IconName; label: string }[] = [
+  { icon: "target", label: "Supports the channel directly" },
+  { icon: "box", label: "Printed on demand, shipped worldwide" },
+  { icon: "bolt", label: "New drops added regularly" },
 ];
 
 export default async function MerchPage() {
@@ -38,7 +39,7 @@ export default async function MerchPage() {
               key={f.label}
               className="flex items-center gap-2 rounded-full border border-white/10 bg-zinc-900/40 px-4 py-2 text-xs text-white/60"
             >
-              <span>{f.icon}</span>
+              <Icon name={f.icon} className="h-4 w-4 text-emerald-300" />
               {f.label}
             </span>
           ))}

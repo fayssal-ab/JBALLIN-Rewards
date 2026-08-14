@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { TournamentSlots, Round } from "@/lib/tournament";
+import { Icon } from "@/components/Icon";
 
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -89,9 +90,9 @@ function SlotBox({
           onClick={onDeclareWinner}
           title="Advance as winner"
           aria-label="Advance as winner"
-          className="shrink-0 rounded-md border border-emerald-400/30 px-1.5 py-0.5 text-xs text-emerald-300 hover:bg-emerald-400/10"
+          className="shrink-0 rounded-md border border-emerald-400/30 p-1 text-emerald-300 hover:bg-emerald-400/10"
         >
-          ✓
+          <Icon name="check" className="h-3.5 w-3.5" />
         </button>
       ) : null}
       <button
@@ -99,7 +100,7 @@ function SlotBox({
         className="shrink-0 text-white/30 hover:text-emerald-300"
         aria-label="Edit slot"
       >
-        ✎
+        <Icon name="edit" className="h-3.5 w-3.5" />
       </button>
     </div>
   );
@@ -210,8 +211,10 @@ export function TournamentBoard({
       </div>
 
       <p className="mx-auto mt-4 max-w-sm text-center text-[11px] text-white/30">
-        Click ✓ on a name to advance it as the winner. Click ✎ to rename a
-        slot.
+        Click the <Icon name="check" className="inline h-3 w-3 align-[-1px] text-emerald-300" /> on
+        a name to advance it as the winner. Click the{" "}
+        <Icon name="edit" className="inline h-3 w-3 align-[-1px]" /> to rename
+        a slot.
       </p>
 
       <div className="mt-10 flex flex-col items-start gap-10 overflow-x-auto pb-4 lg:flex-row lg:justify-center">
@@ -285,8 +288,8 @@ export function TournamentBoard({
           Champion
         </p>
         <div className="animate-glow-pulse mt-3 rounded-2xl border border-emerald-400/30 bg-gradient-to-b from-emerald-400/10 to-transparent p-8">
-          <span className="animate-crown-bounce inline-block text-4xl">
-            👑
+          <span className="animate-crown-bounce inline-block">
+            <Icon name="crown" className="h-10 w-10 text-emerald-300" />
           </span>
           <div className="mt-3">
             <SlotBox name={champion} highlight onSave={(value) => save(4, 0, value)} />

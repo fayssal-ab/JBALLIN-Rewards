@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { MerchItem } from "@/lib/merch";
+import { Icon } from "@/components/Icon";
 
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -20,8 +21,8 @@ function ProductImage({ item }: { item: MerchItem }) {
   }
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-emerald-400/10 to-transparent text-5xl">
-      <span>👕</span>
+    <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-emerald-400/10 to-transparent">
+      <Icon name="shirt" className="h-12 w-12 text-emerald-300/50" />
       <span className="text-[10px] tracking-widest text-white/25 uppercase">
         Preview coming soon
       </span>

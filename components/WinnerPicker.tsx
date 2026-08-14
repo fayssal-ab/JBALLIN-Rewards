@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "@/components/Icon";
 
 const ROLL_STEPS = 24;
 
@@ -80,8 +81,9 @@ export function WinnerPicker() {
           }`}
         >
           {winner ? (
-            <p className="text-[10px] tracking-[0.3em] text-emerald-400/60 uppercase">
-              🎉 Winner
+            <p className="flex items-center justify-center gap-1.5 text-[10px] tracking-[0.3em] text-emerald-400/60 uppercase">
+              <Icon name="trophy" className="h-3.5 w-3.5" />
+              Winner
             </p>
           ) : null}
           <p className="font-display mt-2 text-3xl uppercase text-white sm:text-4xl">

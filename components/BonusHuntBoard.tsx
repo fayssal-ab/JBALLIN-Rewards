@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BonusHuntEntry } from "@/lib/bonusHunt";
 import type { SlotSuggestion } from "@/lib/slotSearch";
+import { Icon } from "@/components/Icon";
 
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -269,9 +270,10 @@ export function BonusHuntBoard({
                       <button
                         onClick={() => removeEntry(b.id)}
                         disabled={busy}
+                        aria-label="Remove entry"
                         className="text-white/30 hover:text-red-400"
                       >
-                        ✕
+                        <Icon name="close" className="h-4 w-4" />
                       </button>
                     </td>
                   </tr>
