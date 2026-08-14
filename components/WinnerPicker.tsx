@@ -1,18 +1,33 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
 
 const ROLL_STEPS = 24;
+const CONFETTI_COLORS = ["#34d399", "#ffffff", "#fbbf24"];
+const CONFETTI_COUNT = 28;
 
 export function WinnerPicker() {
   const [namesText, setNamesText] = useState("");
   const [rolling, setRolling] = useState(false);
   const [display, setDisplay] = useState<string | null>(null);
   const [winner, setWinner] = useState<string | null>(null);
+  const [rollId, setRollId] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => clearTimeout(timerRef.current ?? undefined), []);
+
+  const confetti = useMemo(
+    () =>
+      Array.from({ length: CONFETTI_COUNT }, (_, i) => ({
+        id: i,
+        left: Math.random() * 100,
+        delay: Math.random() * 350,
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+        rotate: Math.random() * 360,
+      })),
+    [rollId]
+  );
 
   const entries = namesText
     .split("\n")
@@ -32,6 +47,7 @@ export function WinnerPicker() {
         setDisplay(chosen);
         setWinner(chosen);
         setRolling(false);
+        setRollId((id) => id + 1);
         return;
       }
       setDisplay(entries[Math.floor(Math.random() * entries.length)]);
@@ -74,19 +90,43 @@ export function WinnerPicker() {
 
       {display ? (
         <div
-          className={`mt-10 max-w-md rounded-2xl border p-10 text-center transition-colors ${
+          className={`relative mt-10 max-w-md overflow-hidden rounded-2xl border p-10 text-center transition-colors ${
             winner
               ? "animate-glow-pulse border-emerald-400/50 bg-emerald-400/5"
-              : "border-white/10 bg-zinc-900/50"
+              : rolling
+                ? "border-emerald-400/30 bg-zinc-900/50"
+                : "border-white/10 bg-zinc-900/50"
           }`}
         >
+          {winner
+            ? confetti.map((c) => (
+                <span
+                  key={c.id}
+                  className="animate-confetti pointer-events-none absolute top-0 h-2 w-2"
+                  style={{
+                    left: `${c.left}%`,
+                    animationDelay: `${c.delay}ms`,
+                    backgroundColor: c.color,
+                    transform: `rotate(${c.rotate}deg)`,
+                  }}
+                />
+              ))
+            : null}
+
           {winner ? (
             <p className="flex items-center justify-center gap-1.5 text-[10px] tracking-[0.3em] text-emerald-400/60 uppercase">
               <Icon name="trophy" className="h-3.5 w-3.5" />
               Winner
             </p>
           ) : null}
-          <p className="font-display mt-2 text-3xl uppercase text-white sm:text-4xl">
+          <p
+            key={display}
+            className={`font-display mt-2 uppercase text-white ${
+              rolling
+                ? "animate-reel-tick text-2xl sm:text-3xl"
+                : "animate-winner-pop text-3xl sm:text-4xl"
+            }`}
+          >
             {display}
           </p>
         </div>
