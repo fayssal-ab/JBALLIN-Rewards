@@ -23,12 +23,15 @@ function SlotBox({
   highlight = false,
   editable = false,
   onSave,
+  onDeclareWinner,
   delay = 0,
 }: {
   name: string | null;
   highlight?: boolean;
   editable?: boolean;
   onSave?: (value: string | null) => void;
+  /** Copies this slot's name into the next round and advances the bracket. */
+  onDeclareWinner?: () => void;
   delay?: number;
 }) {
   const [editing, setEditing] = useState(false);
@@ -83,6 +86,16 @@ function SlotBox({
         <p className="text-sm font-semibold text-white">{name ?? "TBD"}</p>
         {!name ? <p className="text-[11px] text-white/30">—</p> : null}
       </div>
+      {editable && name && onDeclareWinner ? (
+        <button
+          onClick={onDeclareWinner}
+          title="Advance as winner"
+          aria-label="Advance as winner"
+          className="shrink-0 rounded-md border border-emerald-400/30 px-1.5 py-0.5 text-xs text-emerald-300 hover:bg-emerald-400/10"
+        >
+          ✓
+        </button>
+      ) : null}
       {editable ? (
         <button
           onClick={() => setEditing(true)}
@@ -120,6 +133,14 @@ function RoundLabel({ children }: { children: string }) {
   );
 }
 
+/** Where a winner from (round, slotIndex) lands next, or null past the final. */
+function nextSlot(round: Round, slotIndex: number): { round: Round; index: number } | null {
+  if (round === 4) return null;
+  const nextRound = (round + 1) as Round;
+  const nextIndex = round === 3 ? 0 : Math.floor(slotIndex / 2);
+  return { round: nextRound, index: nextIndex };
+}
+
 export function TournamentBoard({
   slots,
   prize,
@@ -136,6 +157,15 @@ export function TournamentBoard({
   async function save(round: Round, slotIndex: number, name: string | null) {
     await callApi({ action: "set", round, slotIndex, name });
     router.refresh();
+  }
+
+  // One click on a name copies it into its slot in the next round — no
+  // retyping the winner by hand.
+  async function declareWinner(round: Round, slotIndex: number) {
+    const name = nameAt(round, slotIndex);
+    const target = nextSlot(round, slotIndex);
+    if (!name || !target) return;
+    await save(target.round, target.index, name);
   }
 
   async function savePrize() {
@@ -196,6 +226,13 @@ export function TournamentBoard({
         ) : null}
       </div>
 
+      {isAdmin ? (
+        <p className="mx-auto mt-4 max-w-sm text-center text-[11px] text-white/30">
+          Click ✓ on a name to advance it as the winner. Click ✎ to
+          rename a slot.
+        </p>
+      ) : null}
+
       <div className="mt-10 flex flex-col items-start gap-10 overflow-x-auto pb-4 lg:flex-row lg:justify-center">
         {/* Round of 8 */}
         <div>
@@ -210,6 +247,7 @@ export function TournamentBoard({
                 nameAt={nameAt}
                 editable={isAdmin}
                 save={save}
+                declareWinner={declareWinner}
                 delay={pair * 80}
               />
             ))}
@@ -233,6 +271,7 @@ export function TournamentBoard({
                 nameAt={nameAt}
                 editable={isAdmin}
                 save={save}
+                declareWinner={declareWinner}
                 delay={320 + pair * 80}
               />
             ))}
@@ -254,6 +293,7 @@ export function TournamentBoard({
               nameAt={nameAt}
               editable={isAdmin}
               save={save}
+              declareWinner={declareWinner}
               highlight
               delay={480}
             />
@@ -297,6 +337,7 @@ function RealMatch({
   nameAt,
   editable,
   save,
+  declareWinner,
   highlight = false,
   delay = 0,
 }: {
@@ -306,6 +347,7 @@ function RealMatch({
   nameAt: (round: Round, index: number) => string | null;
   editable: boolean;
   save: (round: Round, slotIndex: number, name: string | null) => void;
+  declareWinner: (round: Round, slotIndex: number) => void;
   highlight?: boolean;
   delay?: number;
 }) {
@@ -316,6 +358,7 @@ function RealMatch({
         highlight={highlight}
         editable={editable}
         onSave={(value) => save(round, a, value)}
+        onDeclareWinner={() => declareWinner(round, a)}
         delay={delay}
       />
       <p className="text-center text-[10px] tracking-widest text-white/30">VS</p>
@@ -324,6 +367,7 @@ function RealMatch({
         highlight={highlight}
         editable={editable}
         onSave={(value) => save(round, b, value)}
+        onDeclareWinner={() => declareWinner(round, b)}
         delay={delay + 40}
       />
     </div>

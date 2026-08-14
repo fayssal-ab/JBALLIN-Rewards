@@ -4,7 +4,7 @@ import { getPool } from "./db";
 
 // Round 4 is the champion spotlight — a single slot, same editable-box
 // pattern as every match, just displayed differently (see TournamentBoard).
-export const ROUND_SIZES = { 1: 8, 2: 4, 3: 2, 4: 1 } as const;
+const ROUND_SIZES = { 1: 8, 2: 4, 3: 2, 4: 1 } as const;
 export type Round = keyof typeof ROUND_SIZES;
 
 /** slots[round][index] -> name, or null if empty/TBD. */

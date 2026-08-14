@@ -44,6 +44,7 @@ export function HeroParticles() {
                 alt=""
                 fill
                 sizes={`${p.size}px`}
+                priority
                 className="object-contain"
               />
             </div>

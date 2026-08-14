@@ -29,6 +29,7 @@ export function SiteHeader() {
               alt="JBALLIN"
               width={38}
               height={38}
+              priority
               className="rounded-full object-cover ring-1 ring-emerald-400/30"
             />
           ) : (

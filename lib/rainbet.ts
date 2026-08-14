@@ -35,7 +35,7 @@ export type RainbetResult =
 const MAX_RANGE_DAYS = 123;
 
 /** YYYY-MM-DD, inclusive on both ends per the API spec. */
-export function daysBetween(startAt: string, endAt: string): number {
+function daysBetween(startAt: string, endAt: string): number {
   const start = new Date(`${startAt}T00:00:00Z`);
   const end = new Date(`${endAt}T00:00:00Z`);
   return Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;

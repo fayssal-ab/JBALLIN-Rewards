@@ -91,6 +91,7 @@ export default async function LeaderboardPage() {
             alt="Rainbet"
             fill
             sizes="380px"
+            priority
             className="object-contain"
           />
         </a>
@@ -144,6 +145,7 @@ export default async function LeaderboardPage() {
                           alt={`Rank ${entry.rank} trophy`}
                           fill
                           sizes="56px"
+                          priority
                           className="object-contain brightness-0 invert drop-shadow-[0_0_12px_rgba(52,211,153,0.6)]"
                         />
                       </div>
