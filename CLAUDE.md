@@ -133,9 +133,15 @@ precisely why we freeze snapshots rather than re-querying.
 | `live_entries` | `period_id`, `rainbet_id`, `username`, `wagered_amount`, `rank` — replaced each sync |
 | `final_results` | same fields + `prize`, `frozen_at` — **write once, never update** |
 | `sync_log` | `fetched_at`, `cache_updated_at`, `status`, `error_code` |
+| `merch_items` | `name`, `price`, `image_url`, `buy_url`, `position`, `active` — public `/merch` page, managed from `/admin/merch`; placeholder rows until real Printful links are wired in |
 
 Also needed: a `blacklist` of `rainbet_id`s (the streamer's own accounts,
 disqualified users) filtered out before ranking.
+
+Beyond Phase 1's core tables, `tournament_slots`, `tournament`, `bonus_hunt`,
+and `bonus_hunt_entries` back the admin-only `/admin/tournaments` and
+`/admin/bonus-hunt` tools (see `db/migrations/0003_dynamic_features.sql` and
+`0004_tournament_prize.sql`).
 
 ---
 
