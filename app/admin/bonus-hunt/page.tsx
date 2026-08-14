@@ -1,9 +1,15 @@
 import { getBonusHunt } from "@/lib/bonusHunt";
+import { isAdminSession } from "@/lib/admin";
 import { BonusHuntBoard } from "@/components/BonusHuntBoard";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminBonusHuntPage() {
+  // See the comment in app/admin/tournaments/page.tsx: the layout hiding
+  // {children} doesn't stop this segment's fetch from running, so this
+  // check has to happen here too, before any query.
+  if (!(await isAdminSession())) return null;
+
   const { entries, startingBalance } = await getBonusHunt();
 
   return (
