@@ -80,14 +80,16 @@ export default async function LeaderboardPage() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-32">
       <div className="text-center">
-        <div className="relative mx-auto h-16 w-64 sm:h-20 sm:w-80">
-          <Image
-            src="/rainbet/rainbet-logo.png"
-            alt="Rainbet"
-            fill
-            sizes="320px"
-            className="object-contain"
-          />
+        <div className="relative mx-auto flex h-28 w-full max-w-md items-center justify-center rounded-2xl border border-white/10 bg-white p-4 sm:h-32">
+          <div className="relative h-full w-full">
+            <Image
+              src="/rainbet/rainbet-logo.png"
+              alt="Rainbet"
+              fill
+              sizes="400px"
+              className="object-contain"
+            />
+          </div>
         </div>
         <p className="font-display mt-4 text-6xl text-emerald-300 sm:text-7xl">
           {currencyWhole.format(Number(period.prize_pool))}
