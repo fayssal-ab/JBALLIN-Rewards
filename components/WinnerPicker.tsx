@@ -70,6 +70,20 @@ export function WinnerPicker() {
     setRollId((id) => id + 1);
   }
 
+  // For elimination-style giveaways: drop the winner from the list so the
+  // next roll can't pick them again.
+  function removeWinnerAndReset() {
+    if (!winner) return;
+    setNamesText((text) =>
+      text
+        .split("\n")
+        .filter((line) => line.trim() !== winner)
+        .join("\n")
+    );
+    setReel(null);
+    setWinner(null);
+  }
+
   return (
     <div>
       <p className="text-xs tracking-[0.3em] text-white/40 uppercase">
@@ -152,6 +166,14 @@ export function WinnerPicker() {
           <p className="font-display animate-winner-pop mt-2 text-3xl uppercase text-white sm:text-4xl">
             {winner}
           </p>
+          <button
+            type="button"
+            onClick={removeWinnerAndReset}
+            className="relative z-10 mx-auto mt-4 flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/50 hover:border-red-400/30 hover:text-red-300"
+          >
+            <Icon name="close" className="h-3 w-3" />
+            Remove from list
+          </button>
         </div>
       ) : null}
     </div>
