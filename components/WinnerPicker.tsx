@@ -1,21 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
 
-const ROLL_STEPS = 24;
+const ITEM_WIDTH = 128; // px — must match the w-32 class on each reel card
+const ITEM_GAP = 8; // px — matches gap-2
+const STEP = ITEM_WIDTH + ITEM_GAP;
+const REEL_LENGTH = 36;
+const WINNER_INDEX = 28; // leaves a few cards after it so the strip doesn't look like it "ran out"
+
 const CONFETTI_COLORS = ["#34d399", "#ffffff", "#fbbf24"];
 const CONFETTI_COUNT = 28;
 
 export function WinnerPicker() {
   const [namesText, setNamesText] = useState("");
   const [rolling, setRolling] = useState(false);
-  const [display, setDisplay] = useState<string | null>(null);
+  const [reel, setReel] = useState<string[] | null>(null);
   const [winner, setWinner] = useState<string | null>(null);
+  const [offset, setOffset] = useState(0);
   const [rollId, setRollId] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => () => clearTimeout(timerRef.current ?? undefined), []);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   const confetti = useMemo(
     () =>
@@ -36,25 +40,34 @@ export function WinnerPicker() {
 
   function roll() {
     if (entries.length < 2 || rolling) return;
-    setRolling(true);
-    setWinner(null);
     const chosen = entries[Math.floor(Math.random() * entries.length)];
+    const strip = Array.from({ length: REEL_LENGTH }, (_, i) =>
+      i === WINNER_INDEX
+        ? chosen
+        : entries[Math.floor(Math.random() * entries.length)]
+    );
 
-    let step = 0;
-    function tick() {
-      step += 1;
-      if (step >= ROLL_STEPS) {
-        setDisplay(chosen);
-        setWinner(chosen);
-        setRolling(false);
-        setRollId((id) => id + 1);
-        return;
-      }
-      setDisplay(entries[Math.floor(Math.random() * entries.length)]);
-      const delay = 60 + (step / ROLL_STEPS) ** 2 * 300;
-      timerRef.current = setTimeout(tick, delay);
-    }
-    tick();
+    setWinner(null);
+    setReel(strip);
+    setRolling(true);
+    setOffset(0);
+
+    // Let the strip paint at offset 0 with the transition already attached,
+    // then move it on the next frame so the browser actually animates the
+    // change instead of jumping straight to the target.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const viewportWidth = viewportRef.current?.offsetWidth ?? 0;
+        setOffset(WINNER_INDEX * STEP + ITEM_WIDTH / 2 - viewportWidth / 2);
+      });
+    });
+  }
+
+  function onReelTransitionEnd() {
+    if (!rolling || !reel) return;
+    setRolling(false);
+    setWinner(reel[WINNER_INDEX]);
+    setRollId((id) => id + 1);
   }
 
   return (
@@ -66,7 +79,8 @@ export function WinnerPicker() {
         Winner Roller
       </h1>
       <p className="mt-3 max-w-md text-sm text-white/60">
-        Paste one name per line, then roll to pick a random winner.
+        Paste one name per line, then roll to spin the wheel and land on a
+        random winner.
       </p>
 
       <textarea
@@ -88,46 +102,55 @@ export function WinnerPicker() {
         {rolling ? "Rolling…" : "Roll winner"}
       </button>
 
-      {display ? (
+      {reel ? (
         <div
-          className={`relative mt-10 max-w-md overflow-hidden rounded-2xl border p-10 text-center transition-colors ${
-            winner
-              ? "animate-glow-pulse border-emerald-400/50 bg-emerald-400/5"
-              : rolling
-                ? "border-emerald-400/30 bg-zinc-900/50"
-                : "border-white/10 bg-zinc-900/50"
-          }`}
+          ref={viewportRef}
+          className="relative mx-auto mt-10 h-24 max-w-md overflow-hidden rounded-2xl border border-emerald-400/30 bg-zinc-900/50"
         >
-          {winner
-            ? confetti.map((c) => (
-                <span
-                  key={c.id}
-                  className="animate-confetti pointer-events-none absolute top-0 h-2 w-2"
-                  style={{
-                    left: `${c.left}%`,
-                    animationDelay: `${c.delay}ms`,
-                    backgroundColor: c.color,
-                    transform: `rotate(${c.rotate}deg)`,
-                  }}
-                />
-              ))
-            : null}
-
-          {winner ? (
-            <p className="flex items-center justify-center gap-1.5 text-[10px] tracking-[0.3em] text-emerald-400/60 uppercase">
-              <Icon name="trophy" className="h-3.5 w-3.5" />
-              Winner
-            </p>
-          ) : null}
-          <p
-            key={display}
-            className={`font-display mt-2 uppercase text-white ${
-              rolling
-                ? "animate-reel-tick text-2xl sm:text-3xl"
-                : "animate-winner-pop text-3xl sm:text-4xl"
-            }`}
+          <div className="pointer-events-none absolute inset-y-0 left-1/2 z-10 w-0.5 -translate-x-1/2 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-full bg-gradient-to-r from-zinc-950 via-transparent to-zinc-950" />
+          <div
+            onTransitionEnd={onReelTransitionEnd}
+            className="flex h-full items-center gap-2 px-2 transition-transform duration-[4000ms] ease-out"
+            style={{ transform: `translateX(${-offset}px)` }}
           >
-            {display}
+            {reel.map((name, i) => (
+              <div
+                key={i}
+                style={{ width: ITEM_WIDTH }}
+                className={`flex h-16 shrink-0 items-center justify-center rounded-xl border px-2 text-center text-sm font-semibold ${
+                  !rolling && i === WINNER_INDEX
+                    ? "border-emerald-400/60 bg-emerald-400/10 text-emerald-300"
+                    : "border-white/10 bg-zinc-900/70 text-white/70"
+                }`}
+              >
+                <span className="truncate">{name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {winner ? (
+        <div className="animate-glow-pulse relative mx-auto mt-6 max-w-md overflow-hidden rounded-2xl border border-emerald-400/50 bg-emerald-400/5 p-6 text-center">
+          {confetti.map((c) => (
+            <span
+              key={c.id}
+              className="animate-confetti pointer-events-none absolute top-0 h-2 w-2"
+              style={{
+                left: `${c.left}%`,
+                animationDelay: `${c.delay}ms`,
+                backgroundColor: c.color,
+                transform: `rotate(${c.rotate}deg)`,
+              }}
+            />
+          ))}
+          <p className="flex items-center justify-center gap-1.5 text-[10px] tracking-[0.3em] text-emerald-400/60 uppercase">
+            <Icon name="trophy" className="h-3.5 w-3.5" />
+            Winner
+          </p>
+          <p className="font-display animate-winner-pop mt-2 text-3xl uppercase text-white sm:text-4xl">
+            {winner}
           </p>
         </div>
       ) : null}
