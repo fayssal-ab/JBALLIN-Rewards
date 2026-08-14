@@ -12,7 +12,7 @@ const PLATFORM_LINKS = [
   { label: "Home", href: "/" },
   { label: "Leaderboard", href: "/leaderboard" },
   { label: "Milestones", href: "/milestones" },
-  { label: "Merch", href: "/merch" },
+  { label: "Store", href: "/store" },
 ];
 
 const SOCIAL_LINKS = [

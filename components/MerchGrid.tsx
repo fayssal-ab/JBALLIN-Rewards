@@ -34,7 +34,7 @@ export function MerchGrid({ items }: { items: MerchItem[] }) {
   if (items.length === 0) {
     return (
       <div className="mt-16 rounded-3xl border border-white/10 bg-zinc-900/40 p-12 text-center">
-        <p className="text-white/60">Merch is on the way — check back soon.</p>
+        <p className="text-white/60">The store is on the way — check back soon.</p>
       </div>
     );
   }

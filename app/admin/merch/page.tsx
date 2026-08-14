@@ -18,7 +18,7 @@ export default async function AdminMerchPage() {
         Support
       </p>
       <h1 className="font-display text-3xl uppercase text-white sm:text-4xl">
-        Merch
+        Store
       </h1>
       <MerchAdmin items={items} />
     </div>

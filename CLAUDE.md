@@ -133,7 +133,7 @@ precisely why we freeze snapshots rather than re-querying.
 | `live_entries` | `period_id`, `rainbet_id`, `username`, `wagered_amount`, `rank` — replaced each sync |
 | `final_results` | same fields + `prize`, `frozen_at` — **write once, never update** |
 | `sync_log` | `fetched_at`, `cache_updated_at`, `status`, `error_code` |
-| `merch_items` | `name`, `price`, `image_url`, `buy_url`, `position`, `active` — public `/merch` page, managed from `/admin/merch`; placeholder rows until real Printful links are wired in |
+| `merch_items` | `name`, `price`, `image_url`, `buy_url`, `position`, `active` — public `/store` page (brand: TypeShit, Printful-fulfilled via Shopify), managed from `/admin/merch`; placeholder rows until real Shopify data is wired in |
 
 Also needed: a `blacklist` of `rainbet_id`s (the streamer's own accounts,
 disqualified users) filtered out before ranking.

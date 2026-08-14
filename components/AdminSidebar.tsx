@@ -7,7 +7,7 @@ const LINKS = [
   { label: "Tournament", href: "/admin/tournaments" },
   { label: "Bonus Hunt", href: "/admin/bonus-hunt" },
   { label: "Giveaway", href: "/admin/winner-picker" },
-  { label: "Merch", href: "/admin/merch" },
+  { label: "Store", href: "/admin/merch" },
 ];
 
 export function AdminSidebar() {

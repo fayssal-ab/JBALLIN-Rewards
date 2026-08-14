@@ -3,7 +3,7 @@
 const MILESTONES = [
   { threshold: 1_000, reward: "Shoutout on stream" },
   { threshold: 5_000, reward: "Exclusive Discord role" },
-  { threshold: 25_000, reward: "Merch pack" },
+  { threshold: 25_000, reward: "Store credit" },
   { threshold: 100_000, reward: "Cash bonus" },
 ];
 

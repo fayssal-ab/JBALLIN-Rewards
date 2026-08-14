@@ -7,7 +7,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "",
     "/leaderboard",
     "/milestones",
-    "/merch",
+    "/store",
     "/referral",
     "/instructions",
   ];
