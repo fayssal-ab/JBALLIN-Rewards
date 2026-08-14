@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BonusHuntEntry } from "@/lib/bonusHunt";
+import type { SlotSuggestion } from "@/lib/slotSearch";
 
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -16,6 +17,77 @@ async function callApi(body: object) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+// Slot-name autocomplete, backed by slot.report (see lib/slotSearch.ts).
+// Debounced so it doesn't hit the API on every keystroke.
+function SlotNameInput({
+  value,
+  onChange,
+  onPick,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onPick: (slot: SlotSuggestion) => void;
+}) {
+  const [suggestions, setSuggestions] = useState<SlotSuggestion[]>([]);
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (value.trim().length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      const res = await fetch(`/api/slots/search?q=${encodeURIComponent(value)}`);
+      const data = await res.json();
+      setSuggestions(data.results ?? []);
+      setOpen(true);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [value]);
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  return (
+    <div ref={boxRef} className="relative">
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => suggestions.length > 0 && setOpen(true)}
+        placeholder="Slot name"
+        autoComplete="off"
+        className="w-40 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white"
+      />
+      {open && suggestions.length > 0 ? (
+        <div className="absolute left-0 top-full z-10 mt-1 max-h-56 w-64 overflow-y-auto rounded-md border border-white/10 bg-zinc-900 shadow-lg">
+          {suggestions.map((s) => (
+            <button
+              key={`${s.name}-${s.provider}`}
+              type="button"
+              onClick={() => {
+                onPick(s);
+                setOpen(false);
+              }}
+              className="flex w-full flex-col items-start px-3 py-2 text-left text-sm hover:bg-emerald-400/10"
+            >
+              <span className="text-white">{s.name}</span>
+              <span className="text-xs text-white/40">{s.provider}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export function BonusHuntBoard({
@@ -227,11 +299,10 @@ export function BonusHuntBoard({
           onSubmit={addEntry}
           className="mt-6 flex flex-wrap items-center justify-center gap-2"
         >
-          <input
+          <SlotNameInput
             value={form.slotName}
-            onChange={(e) => setForm({ ...form, slotName: e.target.value })}
-            placeholder="Slot name"
-            className="w-40 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white"
+            onChange={(slotName) => setForm({ ...form, slotName })}
+            onPick={(slot) => setForm({ ...form, slotName: slot.name, provider: slot.provider })}
           />
           <input
             value={form.provider}
