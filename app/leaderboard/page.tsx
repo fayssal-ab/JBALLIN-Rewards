@@ -9,7 +9,7 @@ import {
   getRewardForRank,
 } from "@/lib/periods";
 import { Countdown } from "@/components/Countdown";
-import { PERIOD_RESET_TIME_UTC } from "@/lib/constants";
+import { PERIOD_RESET_TIME_UTC, RAINBET_URL } from "@/lib/constants";
 
 // This must re-query the DB on every request, not get frozen into the build
 // — the whole point of an SSR leaderboard is that it reflects the last sync.
@@ -80,17 +80,20 @@ export default async function LeaderboardPage() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-32">
       <div className="text-center">
-        <div className="relative mx-auto flex h-28 w-full max-w-md items-center justify-center rounded-2xl border border-white/10 bg-white p-4 sm:h-32">
-          <div className="relative h-full w-full">
-            <Image
-              src="/rainbet/rainbet-logo.png"
-              alt="Rainbet"
-              fill
-              sizes="400px"
-              className="object-contain"
-            />
-          </div>
-        </div>
+        <a
+          href={RAINBET_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="relative mx-auto block h-20 w-full max-w-sm transition-opacity hover:opacity-80 sm:h-24"
+        >
+          <Image
+            src="/rainbet/rainbet-logo.png"
+            alt="Rainbet"
+            fill
+            sizes="380px"
+            className="object-contain"
+          />
+        </a>
         <p className="font-display mt-4 text-6xl text-emerald-300 sm:text-7xl">
           {currencyWhole.format(Number(period.prize_pool))}
         </p>
