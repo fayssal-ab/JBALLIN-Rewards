@@ -6,8 +6,14 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Merch",
-  description: "Support JBALLIN — official merch, shipped worldwide.",
+  description: "Support JBALLIN directly — official merch, shipped worldwide.",
 };
+
+const FEATURES = [
+  { icon: "🎯", label: "Supports the channel directly" },
+  { icon: "📦", label: "Printed on demand, shipped worldwide" },
+  { icon: "⚡", label: "New drops added regularly" },
+];
 
 export default async function MerchPage() {
   const items = await getActiveMerchItems();
@@ -18,13 +24,25 @@ export default async function MerchPage() {
         <p className="text-xs tracking-[0.3em] text-white/40 uppercase">
           Support the stream
         </p>
-        <h1 className="font-display mt-2 text-4xl uppercase text-white sm:text-5xl">
+        <h1 className="font-display animate-shimmer-text mt-2 bg-gradient-to-r from-white via-emerald-300 to-white bg-clip-text text-4xl uppercase text-transparent sm:text-5xl">
           JBALLIN Merch
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-sm text-white/60">
-          Every order directly supports the channel. Printed and shipped
-          worldwide.
+          Rep the channel. Every order goes straight toward keeping the
+          stream running and the giveaways coming.
         </p>
+
+        <div className="mx-auto mt-8 flex max-w-xl flex-wrap items-center justify-center gap-3">
+          {FEATURES.map((f) => (
+            <span
+              key={f.label}
+              className="flex items-center gap-2 rounded-full border border-white/10 bg-zinc-900/40 px-4 py-2 text-xs text-white/60"
+            >
+              <span>{f.icon}</span>
+              {f.label}
+            </span>
+          ))}
+        </div>
       </div>
 
       <MerchGrid items={items} />

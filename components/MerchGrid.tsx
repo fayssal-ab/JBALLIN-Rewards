@@ -20,8 +20,11 @@ function ProductImage({ item }: { item: MerchItem }) {
   }
 
   return (
-    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-400/10 to-transparent text-5xl">
-      👕
+    <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-emerald-400/10 to-transparent text-5xl">
+      <span>👕</span>
+      <span className="text-[10px] tracking-widest text-white/25 uppercase">
+        Preview coming soon
+      </span>
     </div>
   );
 }
@@ -37,10 +40,11 @@ export function MerchGrid({ items }: { items: MerchItem[] }) {
 
   return (
     <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      {items.map((item) => (
+      {items.map((item, i) => (
         <div
           key={item.id}
-          className="group overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-zinc-900/50 to-zinc-950/50 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/30 hover:shadow-[0_0_35px_rgba(52,211,153,0.15)]"
+          style={{ animationDelay: `${i * 80}ms` }}
+          className="animate-fade-in-up group overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-zinc-900/50 to-zinc-950/50 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/30 hover:shadow-[0_0_35px_rgba(52,211,153,0.15)]"
         >
           <div className="relative aspect-square w-full overflow-hidden">
             <ProductImage item={item} />
