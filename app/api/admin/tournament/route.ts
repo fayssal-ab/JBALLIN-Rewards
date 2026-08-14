@@ -1,10 +1,16 @@
 import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminRequest } from "@/lib/admin";
-import { setTournamentSlot, resetTournament, type Round } from "@/lib/tournament";
+import {
+  setTournamentSlot,
+  setTournamentPrize,
+  resetTournament,
+  type Round,
+} from "@/lib/tournament";
 
 type Body =
   | { action: "set"; round: Round; slotIndex: number; name: string | null }
+  | { action: "prize"; amount: string }
   | { action: "reset" };
 
 export async function POST(request: NextRequest) {
@@ -20,6 +26,9 @@ export async function POST(request: NextRequest) {
   switch (body.action) {
     case "set":
       await setTournamentSlot(body.round, body.slotIndex, body.name);
+      break;
+    case "prize":
+      await setTournamentPrize(body.amount);
       break;
     case "reset":
       await resetTournament();

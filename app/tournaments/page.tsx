@@ -1,4 +1,4 @@
-import { getTournamentSlots } from "@/lib/tournament";
+import { getTournamentSlots, getTournamentPrize } from "@/lib/tournament";
 import { isAdminSession } from "@/lib/admin";
 import { AdminToggle } from "@/components/AdminToggle";
 import { TournamentBoard } from "@/components/TournamentBoard";
@@ -6,7 +6,11 @@ import { TournamentBoard } from "@/components/TournamentBoard";
 export const dynamic = "force-dynamic";
 
 export default async function TournamentsPage() {
-  const [slots, isAdmin] = await Promise.all([getTournamentSlots(), isAdminSession()]);
+  const [slots, prize, isAdmin] = await Promise.all([
+    getTournamentSlots(),
+    getTournamentPrize(),
+    isAdminSession(),
+  ]);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-32">
@@ -24,7 +28,7 @@ export default async function TournamentsPage() {
         <AdminToggle isAdmin={isAdmin} />
       </div>
 
-      <TournamentBoard slots={slots} isAdmin={isAdmin} />
+      <TournamentBoard slots={slots} prize={prize} isAdmin={isAdmin} />
     </div>
   );
 }
