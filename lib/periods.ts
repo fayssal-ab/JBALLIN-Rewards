@@ -76,6 +76,56 @@ export async function getLatestSuccessfulSync(
   return (rows[0] as { cache_updated_at: string | null } | undefined) ?? null;
 }
 
+export interface ClosedPeriodSummary {
+  id: number;
+  start_at: string;
+  end_at: string;
+  prize_pool: string;
+  winner_count: number;
+}
+
+// Most recent first. winner_count comes from final_results, which is
+// frozen once a period closes (golden rule 5) — never recomputed.
+export async function getClosedPeriods(limit = 12): Promise<ClosedPeriodSummary[]> {
+  const [rows] = await getPool().query<RowDataPacket[]>(
+    `SELECT p.id, p.start_at, p.end_at, p.prize_pool,
+            (SELECT COUNT(*) FROM final_results fr WHERE fr.period_id = p.id) AS winner_count
+     FROM periods p
+     WHERE p.status = 'closed'
+     ORDER BY p.end_at DESC
+     LIMIT ?`,
+    [limit]
+  );
+  return rows as ClosedPeriodSummary[];
+}
+
+export async function getClosedPeriod(periodId: number): Promise<Period | null> {
+  const [rows] = await getPool().query<RowDataPacket[]>(
+    "SELECT * FROM periods WHERE id = ? AND status = 'closed' LIMIT 1",
+    [periodId]
+  );
+  return (rows[0] as Period | undefined) ?? null;
+}
+
+export interface FinalResultEntry {
+  rainbet_id: string;
+  username: string;
+  wagered_amount: string;
+  rank: number;
+  prize: string;
+}
+
+export async function getFinalResults(
+  periodId: number,
+  limit = 10
+): Promise<FinalResultEntry[]> {
+  const [rows] = await getPool().query<RowDataPacket[]>(
+    "SELECT rainbet_id, username, wagered_amount, `rank`, prize FROM final_results WHERE period_id = ? ORDER BY `rank` ASC LIMIT ?",
+    [periodId, limit]
+  );
+  return rows as FinalResultEntry[];
+}
+
 export async function getBlacklistedIds(): Promise<Set<string>> {
   const [rows] = await getPool().query<RowDataPacket[]>(
     "SELECT rainbet_id FROM blacklist"
