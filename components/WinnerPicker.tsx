@@ -14,6 +14,13 @@ const ROLL_DURATION_MS = 4000;
 const CONFETTI_COLORS = ["#34d399", "#ffffff", "#fbbf24"];
 const CONFETTI_COUNT = 28;
 
+type EntryMode = "manual" | "kick";
+
+interface GiveawayApiState {
+  session: { active: boolean; keyword: string; started_at: string | null };
+  entries: string[];
+}
+
 export function WinnerPicker() {
   const [namesText, setNamesText] = useState("");
   const [rolling, setRolling] = useState(false);
@@ -25,11 +32,82 @@ export function WinnerPicker() {
   const viewportRef = useRef<HTMLDivElement>(null);
   const finishTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [entryMode, setEntryMode] = useState<EntryMode>("manual");
+  const [keyword, setKeyword] = useState("!giveaway");
+  const [sessionActive, setSessionActive] = useState(false);
+  const [liveEntries, setLiveEntries] = useState<string[]>([]);
+  const [kickBusy, setKickBusy] = useState(false);
+  const [connectStatus, setConnectStatus] = useState<string | null>(null);
+
   useEffect(() => {
     return () => {
       if (finishTimer.current) clearTimeout(finishTimer.current);
     };
   }, []);
+
+  async function refreshGiveawayState() {
+    const res = await fetch("/api/admin/giveaway");
+    if (!res.ok) return;
+    const data = (await res.json()) as GiveawayApiState;
+    setSessionActive(data.session.active);
+    // Only sync the keyword field from the server while a session is
+    // actually running (it's read-only in that state anyway). Otherwise
+    // this poll — which fires every 3s regardless of what the admin is
+    // doing — would stomp on a keyword they're mid-typing before starting.
+    if (data.session.active) setKeyword(data.session.keyword);
+    setLiveEntries(data.entries);
+  }
+
+  // Poll while the Kick tab is open so the entry count updates live as
+  // chat messages come in, without the admin having to refresh.
+  useEffect(() => {
+    if (entryMode !== "kick") return;
+    refreshGiveawayState();
+    const interval = setInterval(refreshGiveawayState, 3000);
+    return () => clearInterval(interval);
+  }, [entryMode]);
+
+  async function startListening() {
+    if (!keyword.trim()) return;
+    setKickBusy(true);
+    await fetch("/api/admin/giveaway", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "start", keyword: keyword.trim() }),
+    });
+    await refreshGiveawayState();
+    setKickBusy(false);
+  }
+
+  // Stopping hands the collected usernames to the same textarea/roll flow
+  // manual mode uses — one roller, two ways to fill it.
+  async function stopListening() {
+    setKickBusy(true);
+    await fetch("/api/admin/giveaway", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "stop" }),
+    });
+    const res = await fetch("/api/admin/giveaway");
+    const data = (await res.json()) as GiveawayApiState;
+    setSessionActive(false);
+    setLiveEntries(data.entries);
+    setNamesText(data.entries.join("\n"));
+    setKickBusy(false);
+  }
+
+  async function connectKickWebhook() {
+    setKickBusy(true);
+    setConnectStatus(null);
+    const res = await fetch("/api/admin/giveaway", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "connect" }),
+    });
+    const data = await res.json();
+    setConnectStatus(res.ok ? "Connected — Kick chat is now linked." : `Failed: ${data.message ?? data.error}`);
+    setKickBusy(false);
+  }
 
   const confetti = useMemo(
     () =>
@@ -119,9 +197,100 @@ export function WinnerPicker() {
         Winner Roller
       </h1>
       <p className="mt-3 max-w-md text-sm text-white/60">
-        Paste one name per line, then roll to spin the wheel and land on a
-        random winner.
+        Paste names by hand, or collect them live from Kick chat, then roll
+        to spin the wheel and land on a random winner.
       </p>
+
+      <div className="mt-6 flex w-fit gap-1 rounded-lg border border-white/10 bg-zinc-900/60 p-1">
+        {(["manual", "kick"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setEntryMode(m)}
+            className={`rounded-md px-4 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors ${
+              entryMode === m ? "bg-emerald-400 text-black" : "text-white/50 hover:text-white"
+            }`}
+          >
+            {m === "manual" ? "Manual" : "Kick Chat"}
+          </button>
+        ))}
+      </div>
+
+      {entryMode === "kick" ? (
+        <div className="mt-4 w-full max-w-md rounded-xl border border-white/10 bg-zinc-900/40 p-4">
+          {sessionActive ? (
+            <>
+              <p className="text-sm text-white/70">
+                Listening for{" "}
+                <span className="font-semibold text-emerald-300">{keyword}</span> in
+                chat — <span className="font-semibold text-white">{liveEntries.length}</span>{" "}
+                entered so far.
+              </p>
+              {liveEntries.length > 0 ? (
+                <div className="mt-3 max-h-32 overflow-y-auto rounded-lg border border-white/5 bg-black/20 p-2">
+                  <p className="flex flex-wrap gap-1.5">
+                    {liveEntries.map((name) => (
+                      <span
+                        key={name}
+                        className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-white/70"
+                      >
+                        {name}
+                      </span>
+                    ))}
+                  </p>
+                </div>
+              ) : null}
+              <button
+                type="button"
+                onClick={stopListening}
+                disabled={kickBusy}
+                className="mt-3 rounded-md border border-red-400/30 px-3 py-1.5 text-xs font-semibold text-red-300 hover:bg-red-400/10 disabled:opacity-50"
+              >
+                Stop listening
+              </button>
+            </>
+          ) : (
+            <>
+              <label className="text-xs text-white/40 uppercase tracking-wide">
+                Keyword viewers type in chat
+              </label>
+              <div className="mt-2 flex gap-2">
+                <input
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  placeholder="!giveaway"
+                  className="w-32 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white"
+                />
+                <button
+                  type="button"
+                  onClick={startListening}
+                  disabled={kickBusy || !keyword.trim()}
+                  className="rounded-md bg-emerald-400 px-4 py-2 text-sm font-semibold text-black disabled:opacity-50"
+                >
+                  Start listening
+                </button>
+              </div>
+              {liveEntries.length > 0 ? (
+                <p className="mt-2 text-xs text-white/30">
+                  {liveEntries.length} names from the last session are loaded into the
+                  list below.
+                </p>
+              ) : null}
+              <button
+                type="button"
+                onClick={connectKickWebhook}
+                disabled={kickBusy}
+                className="mt-3 block text-xs text-white/30 underline decoration-white/20 underline-offset-2 hover:text-white/60"
+              >
+                Connect Kick webhook (one-time setup)
+              </button>
+              {connectStatus ? (
+                <p className="mt-1 text-xs text-white/50">{connectStatus}</p>
+              ) : null}
+            </>
+          )}
+        </div>
+      ) : null}
 
       <textarea
         value={namesText}
