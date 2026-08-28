@@ -100,7 +100,7 @@ export function BonusHuntBoard({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ slotName: "", provider: "", bet: "" });
+  const [form, setForm] = useState({ slotName: "", provider: "", imageUrl: "", bet: "" });
   const [balanceInput, setBalanceInput] = useState(startingBalance);
 
   const totalCost = entries.reduce((sum, b) => sum + Number(b.bet), 0);
@@ -141,9 +141,10 @@ export function BonusHuntBoard({
       action: "add",
       slotName: form.slotName,
       provider: form.provider || undefined,
+      imageUrl: form.imageUrl || undefined,
       bet: form.bet,
     });
-    setForm({ slotName: "", provider: "", bet: "" });
+    setForm({ slotName: "", provider: "", imageUrl: "", bet: "" });
     await refresh();
   }
 
@@ -225,6 +226,7 @@ export function BonusHuntBoard({
             <thead className="bg-white/5 text-white/50 uppercase tracking-wide">
               <tr>
                 <th className="px-6 py-3 font-medium">#</th>
+                <th className="px-4 py-3 font-medium" />
                 <th className="px-6 py-3 font-medium">Slot</th>
                 <th className="hidden px-6 py-3 font-medium sm:table-cell">
                   Provider
@@ -244,6 +246,22 @@ export function BonusHuntBoard({
                     className="border-t border-white/5 text-white/80 hover:bg-white/[0.03]"
                   >
                     <td className="px-6 py-3 text-white/40">{i + 1}</td>
+                    <td className="py-3 pl-4">
+                      {b.image_url ? (
+                        // Arbitrary admin-pasted URLs, any host — plain <img>
+                        // instead of next/image so it doesn't 404 against
+                        // next.config's remotePatterns allowlist.
+                        <img
+                          src={b.image_url}
+                          alt=""
+                          className="h-10 w-10 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03]">
+                          <Icon name="box" className="h-4 w-4 text-white/20" />
+                        </div>
+                      )}
+                    </td>
                     <td className="px-6 py-3 font-medium">{b.slot_name}</td>
                     <td className="hidden px-6 py-3 text-white/50 sm:table-cell">
                       {b.provider ?? "—"}
@@ -298,6 +316,12 @@ export function BonusHuntBoard({
           onChange={(e) => setForm({ ...form, provider: e.target.value })}
           placeholder="Provider (optional)"
           className="w-40 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white"
+        />
+        <input
+          value={form.imageUrl}
+          onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+          placeholder="Image URL (optional)"
+          className="w-48 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white"
         />
         <input
           value={form.bet}

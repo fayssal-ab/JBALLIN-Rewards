@@ -10,7 +10,7 @@ import {
 } from "@/lib/bonusHunt";
 
 type Body =
-  | { action: "add"; slotName: string; provider?: string; bet: string }
+  | { action: "add"; slotName: string; provider?: string; imageUrl?: string; bet: string }
   | { action: "payout"; id: number; payout: string | null }
   | { action: "delete"; id: number }
   | { action: "balance"; amount: string }
@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
       await addBonusHuntEntry({
         slotName: body.slotName,
         provider: body.provider ?? null,
+        imageUrl: body.imageUrl ?? null,
         bet: body.bet,
       });
       break;

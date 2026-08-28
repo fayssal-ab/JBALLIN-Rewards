@@ -1,6 +1,5 @@
 export type IconName =
   | "check"
-  | "edit"
   | "close"
   | "crown"
   | "trophy"
@@ -19,26 +18,6 @@ const PATHS: Record<IconName, React.ReactNode> = {
       strokeLinejoin="round"
       d="M20 6 9 17l-5-5"
     />
-  ),
-  edit: (
-    <>
-      <path
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M12 20h9"
-      />
-      <path
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"
-      />
-    </>
   ),
   close: (
     <path

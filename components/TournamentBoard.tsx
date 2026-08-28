@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { TournamentSlots, Round } from "@/lib/tournament";
 import { Icon } from "@/components/Icon";
@@ -19,6 +19,9 @@ async function callApi(body: object) {
   });
 }
 
+// Click straight into a slot and type — no separate edit-mode toggle to
+// click through first. Saves on blur/Enter, same pattern as the payout
+// inputs in BonusHuntBoard.
 function SlotBox({
   name,
   highlight = false,
@@ -33,91 +36,85 @@ function SlotBox({
   onDeclareWinner?: () => void;
   delay?: number;
 }) {
-  const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(name ?? "");
 
-  if (editing) {
-    return (
-      <div
-        className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 ${
-          highlight ? "border-emerald-400/50 bg-emerald-400/5" : "border-white/10 bg-zinc-900/50"
-        }`}
-      >
-        <input
-          autoFocus
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              setEditing(false);
-              onSave(value || null);
-            }
-          }}
-          className="w-full bg-transparent text-sm text-white focus:outline-none"
-          placeholder="Slot name"
-        />
-        <button
-          onClick={() => {
-            setEditing(false);
-            onSave(value || null);
-          }}
-          className="shrink-0 text-xs text-emerald-300"
-        >
-          Save
-        </button>
-      </div>
-    );
+  // Syncs when a name lands here from elsewhere (declareWinner writing into
+  // the next round's slot, or another tab). Doesn't clobber an in-progress
+  // edit, since `name` only changes after the parent re-fetches — not on
+  // every keystroke.
+  useEffect(() => setValue(name ?? ""), [name]);
+
+  function commit() {
+    const trimmed = value.trim();
+    if (trimmed !== (name ?? "")) onSave(trimmed || null);
   }
 
   return (
     <div
       style={{ animationDelay: `${delay}ms` }}
-      className={`animate-fade-in-up group flex items-center gap-3 rounded-xl border px-4 py-3 transition-all duration-300 hover:-translate-y-0.5 ${
+      className={`animate-fade-in-up group flex items-center gap-2 rounded-xl border px-3 py-2.5 transition-all duration-300 hover:-translate-y-0.5 ${
         highlight
           ? "border-emerald-400/50 bg-emerald-400/5 shadow-[0_0_20px_rgba(52,211,153,0.15)] hover:shadow-[0_0_30px_rgba(52,211,153,0.25)]"
           : "border-white/10 bg-zinc-900/50 hover:border-emerald-400/30"
       }`}
     >
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 text-xs text-white/40 group-hover:border-emerald-400/30 group-hover:text-emerald-300">
-        ?
-      </span>
-      <div className="flex-1">
-        <p className="text-sm font-semibold text-white">{name ?? "TBD"}</p>
-        {!name ? <p className="text-[11px] text-white/30">—</p> : null}
-      </div>
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        }}
+        placeholder="TBD"
+        className="w-full min-w-0 bg-transparent text-sm font-semibold text-white placeholder:text-white/25 placeholder:font-normal focus:outline-none"
+      />
       {name && onDeclareWinner ? (
         <button
           onClick={onDeclareWinner}
           title="Advance as winner"
           aria-label="Advance as winner"
-          className="shrink-0 rounded-md border border-emerald-400/30 p-1 text-emerald-300 hover:bg-emerald-400/10"
+          className="shrink-0 rounded-md border border-emerald-400/30 p-1 text-emerald-300 opacity-0 transition-opacity hover:bg-emerald-400/10 group-hover:opacity-100"
         >
           <Icon name="check" className="h-3.5 w-3.5" />
         </button>
       ) : null}
-      <button
-        onClick={() => setEditing(true)}
-        className="shrink-0 text-white/30 hover:text-emerald-300"
-        aria-label="Edit slot"
-      >
-        <Icon name="edit" className="h-3.5 w-3.5" />
-      </button>
     </div>
   );
 }
 
-function Arrow() {
+/** Distributes n items evenly (justify-around style) and returns each one's vertical center as a %. */
+function centersOf(n: number): number[] {
+  return Array.from({ length: n }, (_, i) => ((2 * i + 1) / (2 * n)) * 100);
+}
+
+// CSS-only bracket connector: two "L" shapes per pair of source matches,
+// meeting at their shared midpoint — which lands exactly on the next
+// round's slot because every column shares the same fixed height and
+// justify-around spacing. No JS layout measurement needed.
+function BracketConnector({ sourceCount }: { sourceCount: number }) {
+  const centers = centersOf(sourceCount);
+  const pairs = Array.from({ length: sourceCount / 2 }, (_, i) => ({
+    top: centers[i * 2],
+    bottom: centers[i * 2 + 1],
+  }));
+
   return (
-    <div className="hidden items-center px-2 text-emerald-400/50 lg:flex">
-      <svg
-        viewBox="0 0 24 24"
-        className="animate-pulse-arrow h-6 w-6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.5}
-      >
-        <path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+    <div className="relative hidden h-[520px] w-10 shrink-0 lg:block">
+      {pairs.map((pair, i) => {
+        const mid = (pair.top + pair.bottom) / 2;
+        return (
+          <div key={i}>
+            <div
+              className="absolute left-0 w-full rounded-br-lg border-r-2 border-b-2 border-emerald-400/25"
+              style={{ top: `${pair.top}%`, height: `${mid - pair.top}%` }}
+            />
+            <div
+              className="absolute left-0 w-full rounded-tr-lg border-r-2 border-t-2 border-emerald-400/25"
+              style={{ top: `${mid}%`, height: `${pair.bottom - mid}%` }}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -184,44 +181,45 @@ export function TournamentBoard({
 
   return (
     <div>
-      {/* Prize */}
-      <div className="mt-6 text-center">
-        <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
-          <span className="text-white/40">Winner prize:</span>
-          <input
-            value={prizeInput}
-            onChange={(e) => setPrizeInput(e.target.value)}
-            className="w-24 rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-white"
-          />
-          <button
-            onClick={savePrize}
-            disabled={busy}
-            className="rounded-md border border-emerald-400/30 px-3 py-1 text-emerald-300 hover:bg-emerald-400/10 disabled:opacity-50"
-          >
-            Save
-          </button>
-          <button
-            onClick={resetBracket}
-            disabled={busy}
-            className="rounded-md border border-red-400/30 px-3 py-1 text-red-300 hover:bg-red-400/10 disabled:opacity-50"
-          >
-            Reset bracket
-          </button>
-        </div>
+      {/* Toolbar */}
+      <div className="mx-auto mt-6 flex max-w-xl flex-wrap items-center justify-center gap-3 rounded-2xl border border-white/10 bg-zinc-900/40 px-5 py-4">
+        <span className="text-xs tracking-wide text-white/40 uppercase">
+          Winner prize
+        </span>
+        <input
+          value={prizeInput}
+          onChange={(e) => setPrizeInput(e.target.value)}
+          className="w-24 rounded-md border border-white/10 bg-zinc-900 px-2 py-1.5 text-sm text-white"
+        />
+        <button
+          onClick={savePrize}
+          disabled={busy}
+          className="rounded-md border border-emerald-400/30 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-400/10 disabled:opacity-50"
+        >
+          Save
+        </button>
+        <div className="mx-1 hidden h-5 w-px bg-white/10 sm:block" />
+        <button
+          onClick={resetBracket}
+          disabled={busy}
+          className="rounded-md border border-red-400/30 px-3 py-1.5 text-xs font-semibold text-red-300 hover:bg-red-400/10 disabled:opacity-50"
+        >
+          Reset bracket
+        </button>
       </div>
 
       <p className="mx-auto mt-4 max-w-sm text-center text-[11px] text-white/30">
-        Click the <Icon name="check" className="inline h-3 w-3 align-[-1px] text-emerald-300" /> on
-        a name to advance it as the winner. Click the{" "}
-        <Icon name="edit" className="inline h-3 w-3 align-[-1px]" /> to rename
-        a slot.
+        Type a name straight into a slot — it saves automatically. Hover a
+        filled slot and click{" "}
+        <Icon name="check" className="inline h-3 w-3 align-[-1px] text-emerald-300" /> to
+        advance it as the winner.
       </p>
 
-      <div className="mt-10 flex flex-col items-start gap-10 overflow-x-auto pb-4 lg:flex-row lg:justify-center">
+      <div className="mt-10 flex flex-col items-start gap-6 overflow-x-auto pb-4 lg:flex-row lg:justify-center lg:gap-0">
         {/* Round of 8 */}
         <div>
           <RoundLabel>Round of 8</RoundLabel>
-          <div className="flex h-[520px] flex-col justify-around gap-4">
+          <div className="flex h-[520px] w-56 flex-col justify-around gap-4">
             {[0, 1, 2, 3].map((pair) => (
               <RealMatch
                 key={pair}
@@ -237,14 +235,12 @@ export function TournamentBoard({
           </div>
         </div>
 
-        <div className="hidden h-[520px] items-center lg:flex">
-          <Arrow />
-        </div>
+        <BracketConnector sourceCount={4} />
 
         {/* Semifinals */}
         <div>
           <RoundLabel>Semifinals</RoundLabel>
-          <div className="flex h-[520px] flex-col justify-around gap-4">
+          <div className="flex h-[520px] w-56 flex-col justify-around gap-4">
             {[0, 1].map((pair) => (
               <RealMatch
                 key={pair}
@@ -260,14 +256,12 @@ export function TournamentBoard({
           </div>
         </div>
 
-        <div className="hidden h-[520px] items-center lg:flex">
-          <Arrow />
-        </div>
+        <BracketConnector sourceCount={2} />
 
         {/* Final */}
         <div>
           <RoundLabel>Final</RoundLabel>
-          <div className="flex h-[520px] flex-col justify-center">
+          <div className="flex h-[520px] w-56 flex-col justify-center">
             <RealMatch
               round={3}
               a={0}

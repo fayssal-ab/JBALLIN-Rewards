@@ -7,6 +7,7 @@ export interface BonusHuntEntry {
   position: number;
   slot_name: string;
   provider: string | null;
+  image_url: string | null;
   bet: string;
   payout: string | null;
 }
@@ -23,7 +24,7 @@ export async function getBonusHunt(): Promise<BonusHuntData> {
     "SELECT starting_balance FROM bonus_hunt WHERE id = 1"
   );
   const [entryRows] = await pool.query<RowDataPacket[]>(
-    "SELECT id, position, slot_name, provider, bet, payout FROM bonus_hunt_entries ORDER BY position ASC"
+    "SELECT id, position, slot_name, provider, image_url, bet, payout FROM bonus_hunt_entries ORDER BY position ASC"
   );
 
   return {
@@ -41,6 +42,7 @@ export async function setStartingBalance(amount: string): Promise<void> {
 export async function addBonusHuntEntry(input: {
   slotName: string;
   provider: string | null;
+  imageUrl: string | null;
   bet: string;
 }): Promise<void> {
   const pool = getPool();
@@ -50,8 +52,8 @@ export async function addBonusHuntEntry(input: {
   const nextPosition = rows[0]?.nextPosition ?? 0;
 
   await pool.query(
-    "INSERT INTO bonus_hunt_entries (position, slot_name, provider, bet) VALUES (?, ?, ?, ?)",
-    [nextPosition, input.slotName, input.provider, input.bet]
+    "INSERT INTO bonus_hunt_entries (position, slot_name, provider, image_url, bet) VALUES (?, ?, ?, ?, ?)",
+    [nextPosition, input.slotName, input.provider, input.imageUrl, input.bet]
   );
 }
 
