@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Icon } from "@/components/Icon";
+import { SocialIcon } from "@/components/SocialIcon";
 
 const ITEM_WIDTH = 128; // px — must match the w-32 class on each reel card
 const ITEM_GAP = 8; // px — matches gap-2
@@ -190,131 +191,192 @@ export function WinnerPicker() {
 
   return (
     <div>
-      <p className="text-xs tracking-[0.3em] text-white/40 uppercase">
-        Giveaway
-      </p>
-      <h1 className="font-display text-3xl uppercase text-white sm:text-4xl">
-        Winner Roller
-      </h1>
+      <div className="flex items-center gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/10">
+          <Icon name="dice" className="h-5 w-5 text-emerald-300" />
+        </div>
+        <div>
+          <p className="text-xs tracking-[0.3em] text-white/40 uppercase">
+            Giveaway
+          </p>
+          <h1 className="font-display text-3xl uppercase text-white sm:text-4xl">
+            Winner Roller
+          </h1>
+        </div>
+      </div>
       <p className="mt-3 max-w-md text-sm text-white/60">
         Paste names by hand, or collect them live from Kick chat, then roll
         to spin the wheel and land on a random winner.
       </p>
 
-      <div className="mt-6 flex w-fit gap-1 rounded-lg border border-white/10 bg-zinc-900/60 p-1">
-        {(["manual", "kick"] as const).map((m) => (
-          <button
-            key={m}
-            type="button"
-            onClick={() => setEntryMode(m)}
-            className={`rounded-md px-4 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors ${
-              entryMode === m ? "bg-emerald-400 text-black" : "text-white/50 hover:text-white"
-            }`}
-          >
-            {m === "manual" ? "Manual" : "Kick Chat"}
-          </button>
-        ))}
+      {/* Mode tabs */}
+      <div className="mt-6 flex w-fit gap-1 rounded-xl border border-white/10 bg-zinc-900/60 p-1">
+        <button
+          type="button"
+          onClick={() => setEntryMode("manual")}
+          className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-wide transition-all ${
+            entryMode === "manual"
+              ? "bg-emerald-400 text-black shadow-[0_0_16px_rgba(52,211,153,0.35)]"
+              : "text-white/50 hover:text-white"
+          }`}
+        >
+          <Icon name="list" className="h-3.5 w-3.5" />
+          Manual
+        </button>
+        <button
+          type="button"
+          onClick={() => setEntryMode("kick")}
+          className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-wide transition-all ${
+            entryMode === "kick"
+              ? "bg-emerald-400 text-black shadow-[0_0_16px_rgba(52,211,153,0.35)]"
+              : "text-white/50 hover:text-white"
+          }`}
+        >
+          <SocialIcon platform="kick" className="h-3.5 w-3.5" />
+          Kick Chat
+        </button>
       </div>
 
       {entryMode === "kick" ? (
-        <div className="mt-4 w-full max-w-md rounded-xl border border-white/10 bg-zinc-900/40 p-4">
-          {sessionActive ? (
-            <>
-              <p className="text-sm text-white/70">
-                Listening for{" "}
-                <span className="font-semibold text-emerald-300">{keyword}</span> in
-                chat — <span className="font-semibold text-white">{liveEntries.length}</span>{" "}
-                entered so far.
-              </p>
-              {liveEntries.length > 0 ? (
-                <div className="mt-3 max-h-32 overflow-y-auto rounded-lg border border-white/5 bg-black/20 p-2">
-                  <p className="flex flex-wrap gap-1.5">
-                    {liveEntries.map((name) => (
-                      <span
-                        key={name}
-                        className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-white/70"
-                      >
-                        {name}
-                      </span>
-                    ))}
+        <div className="mt-4 w-full max-w-md overflow-hidden rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-400/[0.07] to-transparent">
+          <div className="flex items-center gap-2 border-b border-white/5 px-4 py-3">
+            <SocialIcon platform="kick" className="h-4 w-4 text-emerald-300" />
+            <span className="text-xs font-bold tracking-wide text-white/70 uppercase">
+              Kick Chat Entry
+            </span>
+            {sessionActive ? (
+              <span className="ml-auto flex items-center gap-1.5 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-red-400 uppercase">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
+                </span>
+                Live
+              </span>
+            ) : null}
+          </div>
+
+          <div className="p-4">
+            {sessionActive ? (
+              <>
+                <p className="flex items-center gap-2 text-sm text-white/70">
+                  <Icon name="users" className="h-4 w-4 shrink-0 text-emerald-300" />
+                  <span>
+                    <span className="font-display text-lg text-emerald-300">
+                      {liveEntries.length}
+                    </span>{" "}
+                    entered — type{" "}
+                    <span className="font-semibold text-white">{keyword}</span> in
+                    chat to join
+                  </span>
+                </p>
+                {liveEntries.length > 0 ? (
+                  <div className="mt-3 max-h-32 overflow-y-auto rounded-lg border border-white/5 bg-black/20 p-2">
+                    <p className="flex flex-wrap gap-1.5">
+                      {liveEntries.map((name) => (
+                        <span
+                          key={name}
+                          className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-xs font-medium text-white/70"
+                        >
+                          {name}
+                        </span>
+                      ))}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-xs text-white/30">
+                    Waiting for the first entry…
                   </p>
-                </div>
-              ) : null}
-              <button
-                type="button"
-                onClick={stopListening}
-                disabled={kickBusy}
-                className="mt-3 rounded-md border border-red-400/30 px-3 py-1.5 text-xs font-semibold text-red-300 hover:bg-red-400/10 disabled:opacity-50"
-              >
-                Stop listening
-              </button>
-            </>
-          ) : (
-            <>
-              <label className="text-xs text-white/40 uppercase tracking-wide">
-                Keyword viewers type in chat
-              </label>
-              <div className="mt-2 flex gap-2">
-                <input
-                  value={keyword}
-                  onChange={(e) => setKeyword(e.target.value)}
-                  placeholder="!giveaway"
-                  className="w-32 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white"
-                />
+                )}
                 <button
                   type="button"
-                  onClick={startListening}
-                  disabled={kickBusy || !keyword.trim()}
-                  className="rounded-md bg-emerald-400 px-4 py-2 text-sm font-semibold text-black disabled:opacity-50"
+                  onClick={stopListening}
+                  disabled={kickBusy}
+                  className="mt-4 flex items-center gap-1.5 rounded-lg border border-red-400/30 px-3 py-1.5 text-xs font-bold text-red-300 hover:bg-red-400/10 disabled:opacity-50"
                 >
-                  Start listening
+                  <Icon name="stop" className="h-3 w-3" />
+                  Stop listening
                 </button>
-              </div>
-              {liveEntries.length > 0 ? (
-                <p className="mt-2 text-xs text-white/30">
-                  {liveEntries.length} names from the last session are loaded into the
-                  list below.
-                </p>
-              ) : null}
-              <button
-                type="button"
-                onClick={connectKickWebhook}
-                disabled={kickBusy}
-                className="mt-3 block text-xs text-white/30 underline decoration-white/20 underline-offset-2 hover:text-white/60"
-              >
-                Connect Kick webhook (one-time setup)
-              </button>
-              {connectStatus ? (
-                <p className="mt-1 text-xs text-white/50">{connectStatus}</p>
-              ) : null}
-            </>
-          )}
+              </>
+            ) : (
+              <>
+                <label className="text-xs font-semibold tracking-wide text-white/40 uppercase">
+                  Keyword viewers type in chat
+                </label>
+                <div className="mt-2 flex gap-2">
+                  <input
+                    value={keyword}
+                    onChange={(e) => setKeyword(e.target.value)}
+                    placeholder="!giveaway"
+                    className="w-32 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-emerald-400/40 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={startListening}
+                    disabled={kickBusy || !keyword.trim()}
+                    className="flex items-center gap-1.5 rounded-lg bg-emerald-400 px-4 py-2 text-sm font-bold text-black transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                  >
+                    <Icon name="bolt" className="h-3.5 w-3.5" />
+                    Start listening
+                  </button>
+                </div>
+                {liveEntries.length > 0 ? (
+                  <p className="mt-2 text-xs text-white/30">
+                    {liveEntries.length} names from the last session are loaded
+                    into the list below.
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={connectKickWebhook}
+                  disabled={kickBusy}
+                  className="mt-3 block text-xs text-white/30 underline decoration-white/20 underline-offset-2 hover:text-white/60"
+                >
+                  Connect Kick webhook (one-time setup)
+                </button>
+                {connectStatus ? (
+                  <p className="mt-1 text-xs text-white/50">{connectStatus}</p>
+                ) : null}
+              </>
+            )}
+          </div>
         </div>
       ) : null}
 
-      <textarea
-        value={namesText}
-        onChange={(e) => setNamesText(e.target.value)}
-        placeholder={"player1\nplayer2\nplayer3"}
-        rows={8}
-        className="mt-6 w-full max-w-md rounded-xl border border-white/10 bg-zinc-900 p-3 text-sm text-white placeholder:text-white/20 focus:border-emerald-400/30 focus:outline-none"
-      />
-
-      <p className="mt-2 text-xs text-white/30">{entries.length} entries</p>
+      {/* Entry list */}
+      <div className="mt-4 w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/40">
+        <div className="flex items-center gap-2 border-b border-white/5 px-4 py-3">
+          <Icon name="list" className="h-4 w-4 text-white/50" />
+          <span className="text-xs font-bold tracking-wide text-white/70 uppercase">
+            Entry List
+          </span>
+          <span className="ml-auto flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-bold text-white/50">
+            <Icon name="users" className="h-3 w-3" />
+            {entries.length}
+          </span>
+        </div>
+        <textarea
+          value={namesText}
+          onChange={(e) => setNamesText(e.target.value)}
+          placeholder={"player1\nplayer2\nplayer3"}
+          rows={7}
+          className="w-full bg-transparent p-4 text-sm text-white placeholder:text-white/20 focus:outline-none"
+        />
+      </div>
 
       <button
         type="button"
         onClick={roll}
         disabled={entries.length < 2 || rolling}
-        className="mt-4 rounded-lg bg-emerald-400 px-6 py-3 text-sm font-bold text-black transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+        className="mt-5 flex items-center gap-2 rounded-xl bg-emerald-400 px-7 py-3.5 text-sm font-bold text-black shadow-[0_0_24px_rgba(52,211,153,0.3)] transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
       >
+        <Icon name="dice" className={`h-4 w-4 ${rolling ? "animate-spin" : ""}`} />
         {rolling ? "Rolling…" : "Roll winner"}
       </button>
 
       {reel ? (
         <div
           ref={viewportRef}
-          className="relative mx-auto mt-10 h-24 max-w-md overflow-hidden rounded-2xl border border-emerald-400/30 bg-zinc-900/50"
+          className="relative mx-auto mt-10 h-24 max-w-md overflow-hidden rounded-2xl border border-emerald-400/30 bg-zinc-900/50 shadow-[0_0_30px_rgba(52,211,153,0.1)]"
         >
           <div className="pointer-events-none absolute inset-y-0 left-1/2 z-10 w-0.5 -translate-x-1/2 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-full bg-gradient-to-r from-zinc-950 via-transparent to-zinc-950" />
@@ -343,7 +405,7 @@ export function WinnerPicker() {
       ) : null}
 
       {winner ? (
-        <div className="animate-glow-pulse relative mx-auto mt-6 max-w-md overflow-hidden rounded-2xl border border-emerald-400/50 bg-emerald-400/5 p-6 text-center">
+        <div className="animate-glow-pulse relative mx-auto mt-6 max-w-md overflow-hidden rounded-2xl border border-emerald-400/50 bg-gradient-to-b from-emerald-400/10 to-emerald-400/5 p-6 text-center">
           {confetti.map((c) => (
             <span
               key={c.id}
@@ -356,7 +418,10 @@ export function WinnerPicker() {
               }}
             />
           ))}
-          <p className="flex items-center justify-center gap-1.5 text-[10px] tracking-[0.3em] text-emerald-400/60 uppercase">
+          <span className="animate-crown-bounce inline-block">
+            <Icon name="crown" className="h-8 w-8 text-emerald-300" />
+          </span>
+          <p className="mt-1 flex items-center justify-center gap-1.5 text-[10px] tracking-[0.3em] text-emerald-400/60 uppercase">
             <Icon name="trophy" className="h-3.5 w-3.5" />
             Winner
           </p>
