@@ -6,17 +6,29 @@ import {
   getGiveawayEntries,
   startGiveawaySession,
   stopGiveawaySession,
+  markWebhookConnected,
 } from "@/lib/giveawaySession";
 import { getBroadcasterUserId, subscribeToChatMessages } from "@/lib/kick";
 import { KICK_CHANNEL } from "@/lib/constants";
 
-type Body =
-  | { action: "start"; keyword: string }
-  | { action: "stop" }
-  // One-time setup: looks up the channel and subscribes to chat.message.sent.
-  // Requires KICK_CLIENT_ID/KICK_CLIENT_SECRET to be set and the webhook URL
-  // (app/api/webhooks/kick/chat) to already be configured on the Kick app.
-  | { action: "connect" };
+type Body = { action: "start"; keyword: string } | { action: "stop" };
+
+// Looks up the channel and subscribes to chat.message.sent. Requires
+// KICK_CLIENT_ID/KICK_CLIENT_SECRET to be set and the webhook URL
+// (app/api/webhooks/kick/chat) to already be configured on the Kick app.
+// Safe to call more than once — Kick's subscribe endpoint is additive, but
+// we still gate on webhook_connected so a normal "Start listening" doesn't
+// re-subscribe (and burn into Kick's subscription limit) every session.
+async function connectKickWebhookOnce(): Promise<string | null> {
+  try {
+    const broadcasterUserId = await getBroadcasterUserId(KICK_CHANNEL);
+    await subscribeToChatMessages(broadcasterUserId);
+    await markWebhookConnected();
+    return null;
+  } catch (err) {
+    return (err as Error).message;
+  }
+}
 
 export async function POST(request: NextRequest) {
   if (!isAdminRequest(request)) {
@@ -29,27 +41,26 @@ export async function POST(request: NextRequest) {
   }
 
   switch (body.action) {
-    case "start":
+    case "start": {
       if (!body.keyword?.trim()) {
         return NextResponse.json({ error: "missing_keyword" }, { status: 400 });
       }
+
+      // Auto-connect the webhook on first use so there's no separate setup
+      // step — a failure here doesn't block starting the session (the admin
+      // can still add names manually), it's just surfaced as a warning.
+      const session = await getGiveawaySession();
+      let connectWarning: string | null = null;
+      if (!session.webhookConnected) {
+        connectWarning = await connectKickWebhookOnce();
+      }
+
       await startGiveawaySession(body.keyword.trim());
-      break;
+      return NextResponse.json({ ok: true, connectWarning });
+    }
     case "stop":
       await stopGiveawaySession();
       break;
-    case "connect": {
-      try {
-        const broadcasterUserId = await getBroadcasterUserId(KICK_CHANNEL);
-        const result = await subscribeToChatMessages(broadcasterUserId);
-        return NextResponse.json({ ok: true, result });
-      } catch (err) {
-        return NextResponse.json(
-          { error: "kick_connect_failed", message: (err as Error).message },
-          { status: 502 }
-        );
-      }
-    }
     default:
       return NextResponse.json({ error: "unknown_action" }, { status: 400 });
   }

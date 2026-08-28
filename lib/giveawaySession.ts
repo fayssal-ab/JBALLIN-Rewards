@@ -5,19 +5,25 @@ import { getPool } from "./db";
 export interface GiveawaySession {
   active: boolean;
   keyword: string;
+  webhookConnected: boolean;
   started_at: string | null;
 }
 
 export async function getGiveawaySession(): Promise<GiveawaySession> {
   const [rows] = await getPool().query<RowDataPacket[]>(
-    "SELECT active, keyword, started_at FROM giveaway_session WHERE id = 1"
+    "SELECT active, keyword, webhook_connected, started_at FROM giveaway_session WHERE id = 1"
   );
   const row = rows[0];
   return {
     active: Boolean(row?.active),
     keyword: (row?.keyword as string | undefined) ?? "!giveaway",
+    webhookConnected: Boolean(row?.webhook_connected),
     started_at: (row?.started_at as string | undefined) ?? null,
   };
+}
+
+export async function markWebhookConnected(): Promise<void> {
+  await getPool().query("UPDATE giveaway_session SET webhook_connected = 1 WHERE id = 1");
 }
 
 export async function getGiveawayEntries(): Promise<string[]> {

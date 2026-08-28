@@ -38,7 +38,8 @@ export function WinnerPicker() {
   const [sessionActive, setSessionActive] = useState(false);
   const [liveEntries, setLiveEntries] = useState<string[]>([]);
   const [kickBusy, setKickBusy] = useState(false);
-  const [connectStatus, setConnectStatus] = useState<string | null>(null);
+  const [connectWarning, setConnectWarning] = useState<string | null>(null);
+  const [draftName, setDraftName] = useState("");
 
   useEffect(() => {
     return () => {
@@ -68,14 +69,19 @@ export function WinnerPicker() {
     return () => clearInterval(interval);
   }, [entryMode]);
 
+  // Auto-connects the Kick webhook on the server the first time this is
+  // called (see the "start" action) — no separate setup step to click.
   async function startListening() {
     if (!keyword.trim()) return;
     setKickBusy(true);
-    await fetch("/api/admin/giveaway", {
+    setConnectWarning(null);
+    const res = await fetch("/api/admin/giveaway", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "start", keyword: keyword.trim() }),
     });
+    const data = await res.json().catch(() => null);
+    if (data?.connectWarning) setConnectWarning(data.connectWarning);
     await refreshGiveawayState();
     setKickBusy(false);
   }
@@ -97,19 +103,6 @@ export function WinnerPicker() {
     setKickBusy(false);
   }
 
-  async function connectKickWebhook() {
-    setKickBusy(true);
-    setConnectStatus(null);
-    const res = await fetch("/api/admin/giveaway", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "connect" }),
-    });
-    const data = await res.json();
-    setConnectStatus(res.ok ? "Connected — Kick chat is now linked." : `Failed: ${data.message ?? data.error}`);
-    setKickBusy(false);
-  }
-
   const confetti = useMemo(
     () =>
       Array.from({ length: CONFETTI_COUNT }, (_, i) => ({
@@ -126,6 +119,33 @@ export function WinnerPicker() {
     .split("\n")
     .map((n) => n.trim())
     .filter(Boolean);
+
+  // Pasting a multi-line block into the add box bulk-adds every line at
+  // once (so a big paste of 40 names still works in one go), instead of
+  // landing as literal newlines inside a single-line input.
+  function addNames(raw: string) {
+    const additions = raw
+      .split("\n")
+      .map((n) => n.trim())
+      .filter(Boolean);
+    if (additions.length === 0) return;
+    setNamesText((text) => {
+      const existing = text
+        .split("\n")
+        .map((n) => n.trim())
+        .filter(Boolean);
+      return [...existing, ...additions].join("\n");
+    });
+  }
+
+  function removeEntryAt(index: number) {
+    setNamesText(entries.filter((_, i) => i !== index).join("\n"));
+  }
+
+  function closeRollOverlay() {
+    setReel(null);
+    setWinner(null);
+  }
 
   function roll() {
     if (entries.length < 2 || rolling) return;
@@ -287,6 +307,11 @@ export function WinnerPicker() {
                     Waiting for the first entry…
                   </p>
                 )}
+                {connectWarning ? (
+                  <p className="mt-3 text-xs text-amber-400/80">
+                    Kick connection issue: {connectWarning}
+                  </p>
+                ) : null}
                 <button
                   type="button"
                   onClick={stopListening}
@@ -325,24 +350,14 @@ export function WinnerPicker() {
                     into the list below.
                   </p>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={connectKickWebhook}
-                  disabled={kickBusy}
-                  className="mt-3 block text-xs text-white/30 underline decoration-white/20 underline-offset-2 hover:text-white/60"
-                >
-                  Connect Kick webhook (one-time setup)
-                </button>
-                {connectStatus ? (
-                  <p className="mt-1 text-xs text-white/50">{connectStatus}</p>
-                ) : null}
               </>
             )}
           </div>
         </div>
       ) : null}
 
-      {/* Entry list */}
+      {/* Entry list — a removable chip per name, not a free-text note. Paste
+          a multi-line block into the add box to bulk-add everything at once. */}
       <div className="mt-4 w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/40">
         <div className="flex items-center gap-2 border-b border-white/5 px-4 py-3">
           <Icon name="list" className="h-4 w-4 text-white/50" />
@@ -354,13 +369,62 @@ export function WinnerPicker() {
             {entries.length}
           </span>
         </div>
-        <textarea
-          value={namesText}
-          onChange={(e) => setNamesText(e.target.value)}
-          placeholder={"player1\nplayer2\nplayer3"}
-          rows={7}
-          className="w-full bg-transparent p-4 text-sm text-white placeholder:text-white/20 focus:outline-none"
-        />
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            addNames(draftName);
+            setDraftName("");
+          }}
+          className="flex gap-2 border-b border-white/5 p-3"
+        >
+          <input
+            value={draftName}
+            onChange={(e) => setDraftName(e.target.value)}
+            onPaste={(e) => {
+              const pasted = e.clipboardData.getData("text");
+              if (pasted.includes("\n")) {
+                e.preventDefault();
+                addNames(pasted);
+                setDraftName("");
+              }
+            }}
+            placeholder="Type a name, hit Enter — or paste a whole list"
+            className="min-w-0 flex-1 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-white/20 focus:border-emerald-400/40 focus:outline-none"
+          />
+          <button
+            type="submit"
+            disabled={!draftName.trim()}
+            className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-white/60 hover:border-emerald-400/30 hover:text-emerald-300 disabled:opacity-30"
+          >
+            Add
+          </button>
+        </form>
+
+        <div className="flex flex-wrap gap-2 p-4">
+          {entries.length === 0 ? (
+            <p className="text-xs text-white/30">
+              No entries yet — add names above.
+            </p>
+          ) : (
+            entries.map((name, i) => (
+              <span
+                key={`${name}-${i}`}
+                className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] py-1.5 pr-1.5 pl-3 text-sm font-medium text-white"
+              >
+                {name}
+                <button
+                  type="button"
+                  onClick={() => removeEntryAt(i)}
+                  aria-label={`Remove ${name}`}
+                  className="rounded-full p-0.5 text-white/30 hover:bg-red-400/10 hover:text-red-300"
+                >
+                  <Icon name="close" className="h-3 w-3" />
+                </button>
+              </span>
+            ))
+          )}
+        </div>
       </div>
 
       <button
@@ -373,69 +437,89 @@ export function WinnerPicker() {
         {rolling ? "Rolling…" : "Roll winner"}
       </button>
 
+      {/* Centered overlay so the winner is always visible on screen the
+          instant it lands — no scrolling down the page to find it. */}
       {reel ? (
         <div
-          ref={viewportRef}
-          className="relative mx-auto mt-10 h-24 max-w-md overflow-hidden rounded-2xl border border-emerald-400/30 bg-zinc-900/50 shadow-[0_0_30px_rgba(52,211,153,0.1)]"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeRollOverlay();
+          }}
         >
-          <div className="pointer-events-none absolute inset-y-0 left-1/2 z-10 w-0.5 -translate-x-1/2 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-full bg-gradient-to-r from-zinc-950 via-transparent to-zinc-950" />
-          <div
-            className="flex h-full items-center gap-2 px-2 transition-transform ease-out"
-            style={{
-              transform: `translateX(${-offset}px)`,
-              transitionDuration: instant ? "0ms" : `${ROLL_DURATION_MS}ms`,
-            }}
-          >
-            {reel.map((name, i) => (
-              <div
-                key={i}
-                style={{ width: ITEM_WIDTH }}
-                className={`flex h-16 shrink-0 items-center justify-center rounded-xl border px-2 text-center text-sm font-semibold ${
-                  !rolling && i === WINNER_INDEX
-                    ? "border-emerald-400/60 bg-emerald-400/10 text-emerald-300"
-                    : "border-white/10 bg-zinc-900/70 text-white/70"
-                }`}
-              >
-                <span className="truncate">{name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
+          <div className="relative w-full max-w-md">
+            <button
+              type="button"
+              onClick={closeRollOverlay}
+              aria-label="Close"
+              className="absolute -top-11 right-0 rounded-full border border-white/10 p-2 text-white/40 hover:border-white/30 hover:text-white"
+            >
+              <Icon name="close" className="h-4 w-4" />
+            </button>
 
-      {winner ? (
-        <div className="animate-glow-pulse relative mx-auto mt-6 max-w-md overflow-hidden rounded-2xl border border-emerald-400/50 bg-gradient-to-b from-emerald-400/10 to-emerald-400/5 p-6 text-center">
-          {confetti.map((c) => (
-            <span
-              key={c.id}
-              className="animate-confetti pointer-events-none absolute top-0 h-2 w-2"
-              style={{
-                left: `${c.left}%`,
-                animationDelay: `${c.delay}ms`,
-                backgroundColor: c.color,
-                transform: `rotate(${c.rotate}deg)`,
-              }}
-            />
-          ))}
-          <span className="animate-crown-bounce inline-block">
-            <Icon name="crown" className="h-8 w-8 text-emerald-300" />
-          </span>
-          <p className="mt-1 flex items-center justify-center gap-1.5 text-[10px] tracking-[0.3em] text-emerald-400/60 uppercase">
-            <Icon name="trophy" className="h-3.5 w-3.5" />
-            Winner
-          </p>
-          <p className="font-display animate-winner-pop mt-2 text-3xl uppercase text-white sm:text-4xl">
-            {winner}
-          </p>
-          <button
-            type="button"
-            onClick={removeWinnerAndReset}
-            className="relative z-10 mx-auto mt-4 flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/50 hover:border-red-400/30 hover:text-red-300"
-          >
-            <Icon name="close" className="h-3 w-3" />
-            Remove from list
-          </button>
+            <div
+              ref={viewportRef}
+              className="relative h-24 overflow-hidden rounded-2xl border border-emerald-400/30 bg-zinc-900/80 shadow-[0_0_40px_rgba(52,211,153,0.15)]"
+            >
+              <div className="pointer-events-none absolute inset-y-0 left-1/2 z-10 w-0.5 -translate-x-1/2 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-full bg-gradient-to-r from-zinc-950 via-transparent to-zinc-950" />
+              <div
+                className="flex h-full items-center gap-2 px-2 transition-transform ease-out"
+                style={{
+                  transform: `translateX(${-offset}px)`,
+                  transitionDuration: instant ? "0ms" : `${ROLL_DURATION_MS}ms`,
+                }}
+              >
+                {reel.map((name, i) => (
+                  <div
+                    key={i}
+                    style={{ width: ITEM_WIDTH }}
+                    className={`flex h-16 shrink-0 items-center justify-center rounded-xl border px-2 text-center text-sm font-semibold ${
+                      !rolling && i === WINNER_INDEX
+                        ? "border-emerald-400/60 bg-emerald-400/10 text-emerald-300"
+                        : "border-white/10 bg-zinc-900/70 text-white/70"
+                    }`}
+                  >
+                    <span className="truncate">{name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {winner ? (
+              <div className="animate-glow-pulse relative mt-6 overflow-hidden rounded-2xl border border-emerald-400/50 bg-gradient-to-b from-emerald-400/10 to-emerald-400/5 p-6 text-center">
+                {confetti.map((c) => (
+                  <span
+                    key={c.id}
+                    className="animate-confetti pointer-events-none absolute top-0 h-2 w-2"
+                    style={{
+                      left: `${c.left}%`,
+                      animationDelay: `${c.delay}ms`,
+                      backgroundColor: c.color,
+                      transform: `rotate(${c.rotate}deg)`,
+                    }}
+                  />
+                ))}
+                <span className="animate-crown-bounce inline-block">
+                  <Icon name="crown" className="h-8 w-8 text-emerald-300" />
+                </span>
+                <p className="mt-1 flex items-center justify-center gap-1.5 text-[10px] tracking-[0.3em] text-emerald-400/60 uppercase">
+                  <Icon name="trophy" className="h-3.5 w-3.5" />
+                  Winner
+                </p>
+                <p className="font-display animate-winner-pop mt-2 text-3xl uppercase text-white sm:text-4xl">
+                  {winner}
+                </p>
+                <button
+                  type="button"
+                  onClick={removeWinnerAndReset}
+                  className="relative z-10 mx-auto mt-4 flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/50 hover:border-red-400/30 hover:text-red-300"
+                >
+                  <Icon name="close" className="h-3 w-3" />
+                  Remove from list
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </div>
