@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Icon } from "@/components/Icon";
 
 const ITEM_WIDTH = 128; // px — must match the w-32 class on each reel card
@@ -8,6 +9,7 @@ const ITEM_GAP = 8; // px — matches gap-2
 const STEP = ITEM_WIDTH + ITEM_GAP;
 const REEL_LENGTH = 36;
 const WINNER_INDEX = 28; // leaves a few cards after it so the strip doesn't look like it "ran out"
+const ROLL_DURATION_MS = 4000;
 
 const CONFETTI_COLORS = ["#34d399", "#ffffff", "#fbbf24"];
 const CONFETTI_COUNT = 28;
@@ -18,8 +20,16 @@ export function WinnerPicker() {
   const [reel, setReel] = useState<string[] | null>(null);
   const [winner, setWinner] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
+  const [instant, setInstant] = useState(false);
   const [rollId, setRollId] = useState(0);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const finishTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (finishTimer.current) clearTimeout(finishTimer.current);
+    };
+  }, []);
 
   const confetti = useMemo(
     () =>
@@ -47,27 +57,43 @@ export function WinnerPicker() {
         : entries[Math.floor(Math.random() * entries.length)]
     );
 
-    setWinner(null);
-    setReel(strip);
-    setRolling(true);
-    setOffset(0);
+    if (finishTimer.current) clearTimeout(finishTimer.current);
 
-    // Let the strip paint at offset 0 with the transition already attached,
-    // then move it on the next frame so the browser actually animates the
-    // change instead of jumping straight to the target.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const viewportWidth = viewportRef.current?.offsetWidth ?? 0;
-        setOffset(WINNER_INDEX * STEP + ITEM_WIDTH / 2 - viewportWidth / 2);
-      });
+    // The target offset only depends on fixed constants (WINNER_INDEX, STEP,
+    // viewport width), so it's identical on every roll. Snapping back to 0
+    // WITH the transition still enabled risks the browser coalescing "reset
+    // to 0" and "move to target" into one no-op paint when target equals the
+    // value already on screen — no transition ever starts, so the reel
+    // never visibly spins on a repeat roll (and previously left the button
+    // stuck on "Rolling…" forever, since it wasn't relying on this render
+    // at all — see the timer below).
+    //
+    // Fix: disable the transition, snap to 0, force a synchronous reflow
+    // (reading offsetWidth) to lock that in as the browser's real current
+    // style, then re-enable the transition and move to the target. The
+    // reflow makes this deterministic — no reliance on requestAnimationFrame
+    // actually landing a real paint between the two writes.
+    flushSync(() => {
+      setWinner(null);
+      setReel(strip);
+      setRolling(true);
+      setInstant(true);
+      setOffset(0);
     });
-  }
+    void viewportRef.current?.offsetWidth;
 
-  function onReelTransitionEnd() {
-    if (!rolling || !reel) return;
-    setRolling(false);
-    setWinner(reel[WINNER_INDEX]);
-    setRollId((id) => id + 1);
+    const viewportWidth = viewportRef.current?.offsetWidth ?? 0;
+    setInstant(false);
+    setOffset(WINNER_INDEX * STEP + ITEM_WIDTH / 2 - viewportWidth / 2);
+
+    // Drives the reveal on a fixed timer instead of the reel's
+    // onTransitionEnd — deterministic regardless of whether the browser
+    // actually ran a transition for this particular roll.
+    finishTimer.current = setTimeout(() => {
+      setRolling(false);
+      setWinner(chosen);
+      setRollId((id) => id + 1);
+    }, ROLL_DURATION_MS + 150);
   }
 
   // For elimination-style giveaways: drop the winner from the list so the
@@ -124,9 +150,11 @@ export function WinnerPicker() {
           <div className="pointer-events-none absolute inset-y-0 left-1/2 z-10 w-0.5 -translate-x-1/2 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-full bg-gradient-to-r from-zinc-950 via-transparent to-zinc-950" />
           <div
-            onTransitionEnd={onReelTransitionEnd}
-            className="flex h-full items-center gap-2 px-2 transition-transform duration-[4000ms] ease-out"
-            style={{ transform: `translateX(${-offset}px)` }}
+            className="flex h-full items-center gap-2 px-2 transition-transform ease-out"
+            style={{
+              transform: `translateX(${-offset}px)`,
+              transitionDuration: instant ? "0ms" : `${ROLL_DURATION_MS}ms`,
+            }}
           >
             {reel.map((name, i) => (
               <div

@@ -3,11 +3,22 @@ import "server-only";
 export interface SlotSuggestion {
   name: string;
   provider: string;
+  imageUrl: string;
 }
 
 interface SlotReportEntry {
   name: string;
+  slug: string;
   provider: string;
+}
+
+// slot.report's JSON API has no image field (checked the live response —
+// name/provider/rtp/etc only), but their own site serves each slot's box
+// art at this predictable path (confirmed against several real slugs, e.g.
+// /images/slots/gates-of-olympus-thumb.webp returns 200 image/webp) — same
+// images their homepage grid links to the /slots/{slug} detail page.
+function thumbUrl(slug: string): string {
+  return `https://slot.report/images/slots/${slug}-thumb.webp`;
 }
 
 interface SlotReportResponse {
@@ -24,14 +35,21 @@ async function getAllSlots(): Promise<SlotReportEntry[]> {
   const apiKey = process.env.SLOT_REPORT_API_KEY;
   if (!apiKey) return [];
 
-  const res = await fetch("https://slot.report/api/v1/slots.json", {
-    headers: { "X-API-Key": apiKey },
-    next: { revalidate: 86400 },
-  });
-  if (!res.ok) return [];
+  // Autocomplete is a convenience, not a critical path — degrade to no
+  // suggestions on any failure (bad status, network error, timeout, bad
+  // JSON) rather than letting the admin bonus-hunt form 500.
+  try {
+    const res = await fetch("https://slot.report/api/v1/slots.json", {
+      headers: { "X-API-Key": apiKey },
+      next: { revalidate: 86400 },
+    });
+    if (!res.ok) return [];
 
-  const data: SlotReportResponse = await res.json();
-  return data.results ?? [];
+    const data: SlotReportResponse = await res.json();
+    return data.results ?? [];
+  } catch {
+    return [];
+  }
 }
 
 export async function searchSlots(query: string, limit = 8): Promise<SlotSuggestion[]> {
@@ -43,7 +61,7 @@ export async function searchSlots(query: string, limit = 8): Promise<SlotSuggest
 
   for (const slot of slots) {
     if (slot.name.toLowerCase().includes(trimmed)) {
-      matches.push({ name: slot.name, provider: slot.provider });
+      matches.push({ name: slot.name, provider: slot.provider, imageUrl: thumbUrl(slot.slug) });
       if (matches.length >= limit) break;
     }
   }

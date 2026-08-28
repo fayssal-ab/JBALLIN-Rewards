@@ -79,10 +79,18 @@ function SlotNameInput({
                 onPick(s);
                 setOpen(false);
               }}
-              className="flex w-full flex-col items-start px-3 py-2 text-left text-sm hover:bg-emerald-400/10"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-emerald-400/10"
             >
-              <span className="text-white">{s.name}</span>
-              <span className="text-xs text-white/40">{s.provider}</span>
+              <img
+                src={s.imageUrl}
+                alt=""
+                onError={(e) => { (e.target as HTMLImageElement).style.visibility = "hidden"; }}
+                className="h-8 w-8 shrink-0 rounded object-cover"
+              />
+              <span className="flex flex-col items-start">
+                <span className="text-white">{s.name}</span>
+                <span className="text-xs text-white/40">{s.provider}</span>
+              </span>
             </button>
           ))}
         </div>
@@ -215,6 +223,40 @@ export function BonusHuntBoard({
         ))}
       </div>
 
+      {/* Add entry — kept above the list so it stays reachable without
+          scrolling once the hunt has a lot of entries. */}
+      <form
+        onSubmit={addEntry}
+        className="mt-8 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-zinc-900/40 p-4"
+      >
+        <SlotNameInput
+          value={form.slotName}
+          onChange={(slotName) => setForm({ ...form, slotName })}
+          onPick={(slot) =>
+            setForm({ ...form, slotName: slot.name, provider: slot.provider, imageUrl: slot.imageUrl })
+          }
+        />
+        <input
+          value={form.provider}
+          onChange={(e) => setForm({ ...form, provider: e.target.value })}
+          placeholder="Provider (optional)"
+          className="w-40 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white"
+        />
+        <input
+          value={form.bet}
+          onChange={(e) => setForm({ ...form, bet: e.target.value })}
+          placeholder="Bet"
+          className="w-24 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white"
+        />
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded-md bg-emerald-400 px-4 py-2 text-sm font-semibold text-black disabled:opacity-50"
+        >
+          Add bonus
+        </button>
+      </form>
+
       {/* Bonus list */}
       {entries.length === 0 ? (
         <div className="mt-10 rounded-2xl border border-white/10 bg-zinc-900/40 p-12 text-center text-white/50">
@@ -301,42 +343,6 @@ export function BonusHuntBoard({
           </table>
         </div>
       )}
-
-      <form
-        onSubmit={addEntry}
-        className="mt-6 flex flex-wrap items-center gap-2"
-      >
-        <SlotNameInput
-          value={form.slotName}
-          onChange={(slotName) => setForm({ ...form, slotName })}
-          onPick={(slot) => setForm({ ...form, slotName: slot.name, provider: slot.provider })}
-        />
-        <input
-          value={form.provider}
-          onChange={(e) => setForm({ ...form, provider: e.target.value })}
-          placeholder="Provider (optional)"
-          className="w-40 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white"
-        />
-        <input
-          value={form.imageUrl}
-          onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-          placeholder="Image URL (optional)"
-          className="w-48 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white"
-        />
-        <input
-          value={form.bet}
-          onChange={(e) => setForm({ ...form, bet: e.target.value })}
-          placeholder="Bet"
-          className="w-24 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white"
-        />
-        <button
-          type="submit"
-          disabled={busy}
-          className="rounded-md bg-emerald-400 px-4 py-2 text-sm font-semibold text-black disabled:opacity-50"
-        >
-          Add bonus
-        </button>
-      </form>
     </div>
   );
 }
