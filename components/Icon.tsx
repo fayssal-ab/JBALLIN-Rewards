@@ -10,7 +10,8 @@ export type IconName =
   | "list"
   | "users"
   | "dice"
-  | "stop";
+  | "stop"
+  | "clock";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   check: (
@@ -115,6 +116,19 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   stop: <rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor" />,
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth={2} />
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 7v5l3.5 2"
+      />
+    </>
+  ),
 };
 
 export function Icon({ name, className }: { name: IconName; className?: string }) {

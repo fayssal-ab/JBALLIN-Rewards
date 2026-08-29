@@ -166,21 +166,16 @@ export default async function LeaderboardPage({
             Rainbet data cached as of {lastSync.cache_updated_at}
           </p>
         ) : null}
+
+        <div className="mt-8">
+          <Countdown targetIso={`${period.end_at}T${PERIOD_RESET_TIME_UTC}Z`} />
+        </div>
       </div>
 
       <LeaderboardTable
         entries={rows}
         emptyMessage="No wagers logged yet this period — be the first to show up here."
       />
-
-      <div className="mt-16 text-center">
-        <p className="text-xs tracking-[0.3em] text-white/40 uppercase">
-          Time Left
-        </p>
-        <div className="mt-4">
-          <Countdown targetIso={`${period.end_at}T${PERIOD_RESET_TIME_UTC}Z`} />
-        </div>
-      </div>
 
       <PreviousMonths periods={closedPeriods} viewingPeriodId={null} />
     </div>
