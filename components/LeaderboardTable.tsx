@@ -111,7 +111,7 @@ export function LeaderboardTable({
               <span className="flex-1 truncate font-medium text-white/90">
                 {entry.maskedUsername}
               </span>
-              <span className="hidden shrink-0 text-right text-sm text-white/50 sm:block">
+              <span className="shrink-0 text-right text-xs text-white/50 sm:text-sm">
                 {currency.format(Number(entry.wagered_amount))}
               </span>
               <span className="w-16 shrink-0 text-right font-bold text-emerald-300 sm:w-20">
