@@ -99,35 +99,43 @@ function SlotNameInput({
   );
 }
 
+interface RankedGuess {
+  username: string;
+  guess: string;
+  offBy: number;
+  rank: number;
+}
+
+interface PredictionState {
+  round: { active: boolean; started_at: string | null };
+  guessCount: number;
+  final: { finalBalance: number; ranked: RankedGuess[] } | null;
+}
+
 export function BonusHuntBoard({
   entries,
   startingBalance,
-  initialActivePredictionId,
+  initialPrediction,
 }: {
   entries: BonusHuntEntry[];
   startingBalance: string;
-  initialActivePredictionId: number | null;
+  initialPrediction: PredictionState;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ slotName: "", provider: "", imageUrl: "", bet: "" });
   const [balanceInput, setBalanceInput] = useState(startingBalance);
-  const [activePredictionId, setActivePredictionId] = useState(initialActivePredictionId);
-  const [guessCount, setGuessCount] = useState(0);
+  const [prediction, setPrediction] = useState<PredictionState>(initialPrediction);
 
-  // Polls guess count while a round is live — chat entries arrive via the
-  // Kick webhook, not through this admin session, so nothing else would
-  // otherwise update this view.
+  // Polls while mounted — guesses arrive via the Kick webhook, not through
+  // this admin session, so nothing else would otherwise update this view.
   useEffect(() => {
     let cancelled = false;
     async function poll() {
       const res = await fetch("/api/admin/prediction");
       if (!res.ok || cancelled) return;
-      const data = await res.json();
-      setActivePredictionId(data.entryId);
-      setGuessCount(data.guessCount);
+      setPrediction(await res.json());
     }
-    poll();
     const interval = setInterval(poll, 4000);
     return () => {
       cancelled = true;
@@ -135,26 +143,15 @@ export function BonusHuntBoard({
     };
   }, []);
 
-  async function startGuessing(id: number) {
+  async function callPredictionApi(body: object) {
     setBusy(true);
     await fetch("/api/admin/prediction", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "start", entryId: id }),
+      body: JSON.stringify(body),
     });
-    setActivePredictionId(id);
-    setGuessCount(0);
-    setBusy(false);
-  }
-
-  async function stopGuessing() {
-    setBusy(true);
-    await fetch("/api/admin/prediction", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "stop" }),
-    });
-    setActivePredictionId(null);
+    const res = await fetch("/api/admin/prediction");
+    setPrediction(await res.json());
     setBusy(false);
   }
 
@@ -270,6 +267,94 @@ export function BonusHuntBoard({
         ))}
       </div>
 
+      {/* Guess The Balance — one round for the whole hunt, viewers guess
+          the final balance via "!gb <amount>" in Kick chat. */}
+      <div className="mt-6 overflow-hidden rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-400/[0.05] to-transparent">
+        <div className="flex items-center gap-2 border-b border-white/5 px-4 py-3">
+          <Icon name="target" className="h-4 w-4 text-emerald-300" />
+          <span className="text-xs font-bold tracking-wide text-white/70 uppercase">
+            Guess The Balance
+          </span>
+          {prediction.round.active ? (
+            <span className="ml-auto flex items-center gap-1.5 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-red-400 uppercase">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
+              </span>
+              Live · {prediction.guessCount}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 p-4">
+          {prediction.round.active ? (
+            <button
+              onClick={() => callPredictionApi({ action: "stop" })}
+              disabled={busy}
+              className="flex items-center gap-1.5 rounded-lg border border-red-400/30 px-3 py-1.5 text-xs font-bold text-red-300 hover:bg-red-400/10 disabled:opacity-50"
+            >
+              <Icon name="stop" className="h-3 w-3" />
+              Stop guessing
+            </button>
+          ) : (
+            <button
+              onClick={() => callPredictionApi({ action: "start" })}
+              disabled={busy}
+              className="flex items-center gap-1.5 rounded-lg bg-emerald-400 px-3 py-1.5 text-xs font-bold text-black disabled:opacity-50"
+            >
+              <Icon name="bolt" className="h-3 w-3" />
+              Start guessing
+            </button>
+          )}
+          {prediction.guessCount > 0 ? (
+            <button
+              onClick={() => {
+                if (confirm("Clear every guess collected so far?")) {
+                  callPredictionApi({ action: "clear" });
+                }
+              }}
+              disabled={busy}
+              className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-white/50 hover:border-white/20 hover:text-white disabled:opacity-50"
+            >
+              Clear guesses
+            </button>
+          ) : null}
+          <p className="text-xs text-white/40">
+            Viewers type{" "}
+            <span className="font-semibold text-white/70">!gb &lt;amount&gt;</span>{" "}
+            in chat to guess the hunt&apos;s final balance.
+          </p>
+        </div>
+
+        {prediction.final ? (
+          <div className="border-t border-white/5 p-4">
+            <p className="text-xs text-white/50">
+              Hunt complete — final balance{" "}
+              <span className="font-semibold text-emerald-300">
+                {currency.format(prediction.final.finalBalance)}
+              </span>
+            </p>
+            {prediction.final.ranked.length > 0 ? (
+              <ol className="mt-2 space-y-1 text-sm">
+                {prediction.final.ranked.slice(0, 5).map((g) => (
+                  <li key={g.username} className="flex items-center justify-between text-white/70">
+                    <span>
+                      #{g.rank} {g.username}
+                    </span>
+                    <span>
+                      {currency.format(Number(g.guess))}{" "}
+                      <span className="text-white/30">
+                        (off by {currency.format(g.offBy)})
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
       {/* Add entry — kept above the list so it stays reachable without
           scrolling once the hunt has a lot of entries. */}
       <form
@@ -323,7 +408,6 @@ export function BonusHuntBoard({
                 <th className="px-6 py-3 text-right font-medium">Bet</th>
                 <th className="px-6 py-3 text-right font-medium">Payout</th>
                 <th className="px-6 py-3 text-right font-medium">Mult.</th>
-                <th className="px-6 py-3 text-center font-medium">Predict</th>
                 <th className="px-6 py-3" />
               </tr>
             </thead>
@@ -373,32 +457,6 @@ export function BonusHuntBoard({
                     </td>
                     <td className="px-6 py-3 text-right font-semibold text-emerald-300">
                       {mult !== null ? `${mult.toFixed(1)}x` : "—"}
-                    </td>
-                    <td className="px-6 py-3 text-center">
-                      {b.payout !== null ? null : activePredictionId === b.id ? (
-                        <button
-                          onClick={stopGuessing}
-                          disabled={busy}
-                          title="Stop the live guessing round"
-                          className="inline-flex items-center gap-1 rounded-full border border-red-400/30 px-2.5 py-1 text-[11px] font-semibold text-red-300 hover:bg-red-400/10 disabled:opacity-50"
-                        >
-                          <span className="relative flex h-1.5 w-1.5">
-                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
-                          </span>
-                          Live · {guessCount}
-                        </button>
-                      ) : activePredictionId === null ? (
-                        <button
-                          onClick={() => startGuessing(b.id)}
-                          disabled={busy}
-                          title="Open this slot for Kick-chat guesses (!gb <amount>)"
-                          className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-[11px] font-semibold text-white/50 hover:border-emerald-400/30 hover:text-emerald-300 disabled:opacity-50"
-                        >
-                          <Icon name="target" className="h-3 w-3" />
-                          Guess
-                        </button>
-                      ) : null}
                     </td>
                     <td className="px-6 py-3 text-right">
                       <button

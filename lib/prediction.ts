@@ -1,119 +1,96 @@
 import "server-only";
 import type { RowDataPacket } from "mysql2";
 import { getPool } from "./db";
+import { getBonusHunt } from "./bonusHunt";
 
-export interface PredictionEntry {
-  id: number;
-  slot_name: string;
-  provider: string | null;
-  image_url: string | null;
-  bet: string;
+export interface GuessBalanceRound {
+  active: boolean;
+  started_at: string | null;
 }
 
-export interface PredictionGuess {
+export interface BalanceGuess {
   username: string;
   guess: string;
 }
 
-export interface ResolvedRound {
-  id: number;
-  slot_name: string;
-  image_url: string | null;
-  payout: string;
-  winner: string | null;
-  winnerGuess: string | null;
-  guessCount: number;
+export interface RankedGuess extends BalanceGuess {
+  offBy: number;
+  rank: number;
 }
 
-export async function getActivePredictionEntryId(): Promise<number | null> {
+export interface FinalBalanceResult {
+  finalBalance: number;
+  ranked: RankedGuess[];
+}
+
+export async function getGuessBalanceRound(): Promise<GuessBalanceRound> {
   const [rows] = await getPool().query<RowDataPacket[]>(
-    "SELECT bonus_entry_id FROM prediction_round WHERE id = 1"
+    "SELECT active, started_at FROM guess_balance_round WHERE id = 1"
   );
-  return (rows[0]?.bonus_entry_id as number | null) ?? null;
+  const row = rows[0];
+  return {
+    active: Boolean(row?.active),
+    started_at: (row?.started_at as string | undefined) ?? null,
+  };
 }
 
-export async function getActivePredictionEntry(): Promise<PredictionEntry | null> {
-  const entryId = await getActivePredictionEntryId();
-  if (!entryId) return null;
-
-  const [rows] = await getPool().query<RowDataPacket[]>(
-    "SELECT id, slot_name, provider, image_url, bet FROM bonus_hunt_entries WHERE id = ?",
-    [entryId]
-  );
-  return (rows[0] as PredictionEntry | undefined) ?? null;
-}
-
-// Fresh round: clears any leftover guesses on this entry first, so
-// clicking "Start guessing" twice on the same row doesn't carry over
-// stale data.
-export async function setActivePrediction(entryId: number): Promise<void> {
+// Fresh round — clears whatever the previous hunt's guesses were.
+export async function startGuessBalanceRound(): Promise<void> {
   const pool = getPool();
-  await pool.query("DELETE FROM prediction_guesses WHERE bonus_entry_id = ?", [entryId]);
-  await pool.query("UPDATE prediction_round SET bonus_entry_id = ? WHERE id = 1", [entryId]);
-}
-
-export async function clearActivePrediction(): Promise<void> {
-  await getPool().query("UPDATE prediction_round SET bonus_entry_id = NULL WHERE id = 1");
-}
-
-// Called when a bonus hunt entry's payout is set (see the "payout" action
-// in app/api/admin/bonus-hunt/route.ts) — if that entry was the active
-// round, close it out. The entry's own `payout` column is what makes it
-// show up in getPredictionHistory below; nothing else to persist here.
-export async function clearActivePredictionIfMatches(entryId: number): Promise<void> {
-  await getPool().query(
-    "UPDATE prediction_round SET bonus_entry_id = NULL WHERE id = 1 AND bonus_entry_id = ?",
-    [entryId]
+  await pool.query("DELETE FROM guess_balance_guesses");
+  await pool.query(
+    "UPDATE guess_balance_round SET active = 1, started_at = CURRENT_TIMESTAMP WHERE id = 1"
   );
 }
 
-export async function getPredictionGuesses(entryId: number): Promise<PredictionGuess[]> {
+export async function stopGuessBalanceRound(): Promise<void> {
+  await getPool().query("UPDATE guess_balance_round SET active = 0 WHERE id = 1");
+}
+
+export async function clearGuessBalanceGuesses(): Promise<void> {
+  await getPool().query("DELETE FROM guess_balance_guesses");
+}
+
+export async function getBalanceGuesses(): Promise<BalanceGuess[]> {
   const [rows] = await getPool().query<RowDataPacket[]>(
-    "SELECT username, guess FROM prediction_guesses WHERE bonus_entry_id = ? ORDER BY created_at ASC",
-    [entryId]
+    "SELECT username, guess FROM guess_balance_guesses ORDER BY created_at ASC"
   );
-  return rows as PredictionGuess[];
+  return rows as BalanceGuess[];
 }
 
-// Past rounds: any opened bonus_hunt_entries row that had at least one
-// guess. Winner is whoever's guess has the smallest absolute distance to
-// the real payout — computed on read, not stored, so it can't drift out of
-// sync with the entry's payout.
-export async function getPredictionHistory(limit = 10): Promise<ResolvedRound[]> {
-  const [rows] = await getPool().query<RowDataPacket[]>(
-    `SELECT
-       e.id, e.slot_name, e.image_url, e.payout,
-       (SELECT g.username FROM prediction_guesses g
-        WHERE g.bonus_entry_id = e.id
-        ORDER BY ABS(g.guess - e.payout) ASC, g.created_at ASC LIMIT 1) AS winner,
-       (SELECT g.guess FROM prediction_guesses g
-        WHERE g.bonus_entry_id = e.id
-        ORDER BY ABS(g.guess - e.payout) ASC, g.created_at ASC LIMIT 1) AS winnerGuess,
-       (SELECT COUNT(*) FROM prediction_guesses g WHERE g.bonus_entry_id = e.id) AS guessCount
-     FROM bonus_hunt_entries e
-     WHERE e.payout IS NOT NULL
-       AND EXISTS (SELECT 1 FROM prediction_guesses g WHERE g.bonus_entry_id = e.id)
-     ORDER BY e.id DESC
-     LIMIT ?`,
-    [limit]
-  );
-  return rows as ResolvedRound[];
-}
-
-// Called from the webhook handler for every chat message — mirrors
-// recordGiveawayEntryIfMatches in lib/giveawaySession.ts. Never throws, and
-// silently no-ops when there's no active round or the message doesn't match
-// the "!gb <amount>" pattern.
-export async function recordPredictionGuessIfActive(username: string, content: string): Promise<void> {
+// Called from the webhook handler for every chat message — never throws,
+// and silently no-ops on garbage input (anything that doesn't match
+// "!gb <number>") or when no round is open.
+export async function recordBalanceGuessIfActive(username: string, content: string): Promise<void> {
   const match = content.trim().match(/^!gb\s+\$?(\d+(?:\.\d+)?)/i);
   if (!match) return;
 
-  const activeEntryId = await getActivePredictionEntryId();
-  if (!activeEntryId) return;
+  const round = await getGuessBalanceRound();
+  if (!round.active) return;
 
   await getPool().query(
-    `INSERT INTO prediction_guesses (bonus_entry_id, username, guess) VALUES (?, ?, ?)
+    `INSERT INTO guess_balance_guesses (username, guess) VALUES (?, ?)
      ON DUPLICATE KEY UPDATE guess = VALUES(guess)`,
-    [activeEntryId, username, match[1]]
+    [username, match[1]]
   );
+}
+
+// The hunt is "finished" once every collected entry has a payout — that's
+// the moment the real final balance exists and guesses can be ranked. Not
+// gated on the round's active flag: even if the admin never clicks "Stop",
+// finishing the hunt itself resolves the round.
+export async function getFinalBalanceIfHuntComplete(): Promise<FinalBalanceResult | null> {
+  const { startingBalance, entries } = await getBonusHunt();
+  if (entries.length === 0 || entries.some((e) => e.payout === null)) return null;
+
+  const totalPayout = entries.reduce((sum, e) => sum + Number(e.payout), 0);
+  const finalBalance = Number(startingBalance) + totalPayout;
+
+  const guesses = await getBalanceGuesses();
+  const ranked = guesses
+    .map((g) => ({ ...g, offBy: Math.abs(Number(g.guess) - finalBalance) }))
+    .sort((a, b) => a.offBy - b.offBy)
+    .map((g, i) => ({ ...g, rank: i + 1 }));
+
+  return { finalBalance, ranked };
 }

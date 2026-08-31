@@ -8,7 +8,7 @@ import {
   setStartingBalance,
   resetBonusHunt,
 } from "@/lib/bonusHunt";
-import { clearActivePredictionIfMatches } from "@/lib/prediction";
+import { stopGuessBalanceRound, clearGuessBalanceGuesses } from "@/lib/prediction";
 
 type Body =
   | { action: "add"; slotName: string; provider?: string; imageUrl?: string; bet: string }
@@ -41,10 +41,6 @@ export async function POST(request: NextRequest) {
       break;
     case "payout":
       await setBonusHuntPayout(body.id, body.payout);
-      // If this entry was the live "Guess the Bonus" round, revealing the
-      // real payout resolves and closes it — the entry's own payout column
-      // is what the prediction page reads to compute the winner.
-      if (body.payout !== null) await clearActivePredictionIfMatches(body.id);
       break;
     case "delete":
       await deleteBonusHuntEntry(body.id);
@@ -54,6 +50,11 @@ export async function POST(request: NextRequest) {
       break;
     case "reset":
       await resetBonusHunt();
+      // A fresh hunt means the previous "Guess the Balance" round (if any)
+      // no longer means anything — close it and drop its guesses so the
+      // next hunt starts clean.
+      await stopGuessBalanceRound();
+      await clearGuessBalanceGuesses();
       break;
     default:
       return NextResponse.json({ error: "unknown_action" }, { status: 400 });

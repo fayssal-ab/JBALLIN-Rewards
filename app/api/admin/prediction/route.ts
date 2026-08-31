@@ -2,13 +2,15 @@ import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminRequest } from "@/lib/admin";
 import {
-  setActivePrediction,
-  clearActivePrediction,
-  getActivePredictionEntryId,
-  getPredictionGuesses,
+  startGuessBalanceRound,
+  stopGuessBalanceRound,
+  clearGuessBalanceGuesses,
+  getGuessBalanceRound,
+  getBalanceGuesses,
+  getFinalBalanceIfHuntComplete,
 } from "@/lib/prediction";
 
-type Body = { action: "start"; entryId: number } | { action: "stop" };
+type Body = { action: "start" } | { action: "stop" } | { action: "clear" };
 
 export async function POST(request: NextRequest) {
   if (!isAdminRequest(request)) {
@@ -22,13 +24,13 @@ export async function POST(request: NextRequest) {
 
   switch (body.action) {
     case "start":
-      if (!body.entryId) {
-        return NextResponse.json({ error: "missing_entry" }, { status: 400 });
-      }
-      await setActivePrediction(body.entryId);
+      await startGuessBalanceRound();
       break;
     case "stop":
-      await clearActivePrediction();
+      await stopGuessBalanceRound();
+      break;
+    case "clear":
+      await clearGuessBalanceGuesses();
       break;
     default:
       return NextResponse.json({ error: "unknown_action" }, { status: 400 });
@@ -42,7 +44,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const entryId = await getActivePredictionEntryId();
-  const guesses = entryId ? await getPredictionGuesses(entryId) : [];
-  return NextResponse.json({ entryId, guessCount: guesses.length });
+  const [round, guesses, final] = await Promise.all([
+    getGuessBalanceRound(),
+    getBalanceGuesses(),
+    getFinalBalanceIfHuntComplete(),
+  ]);
+  return NextResponse.json({ round, guessCount: guesses.length, final });
 }
