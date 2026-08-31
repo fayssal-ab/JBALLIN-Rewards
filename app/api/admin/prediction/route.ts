@@ -10,7 +10,10 @@ import {
   getFinalBalanceIfHuntComplete,
 } from "@/lib/prediction";
 
-type Body = { action: "start" } | { action: "stop" } | { action: "clear" };
+type Body =
+  | { action: "start"; rank1Prize?: string; rank2Prize?: string; rank3Prize?: string }
+  | { action: "stop" }
+  | { action: "clear" };
 
 export async function POST(request: NextRequest) {
   if (!isAdminRequest(request)) {
@@ -24,7 +27,11 @@ export async function POST(request: NextRequest) {
 
   switch (body.action) {
     case "start":
-      await startGuessBalanceRound();
+      await startGuessBalanceRound({
+        rank1Prize: body.rank1Prize,
+        rank2Prize: body.rank2Prize,
+        rank3Prize: body.rank3Prize,
+      });
       break;
     case "stop":
       await stopGuessBalanceRound();

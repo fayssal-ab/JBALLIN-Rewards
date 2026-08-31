@@ -104,12 +104,19 @@ interface RankedGuess {
   guess: string;
   offBy: number;
   rank: number;
+  prize: number;
 }
 
 interface PredictionState {
-  round: { active: boolean; started_at: string | null };
+  round: {
+    active: boolean;
+    started_at: string | null;
+    rank1Prize: string;
+    rank2Prize: string;
+    rank3Prize: string;
+  };
   guessCount: number;
-  final: { finalBalance: number; ranked: RankedGuess[] } | null;
+  final: { finalBalance: number; prizePool: number; ranked: RankedGuess[] } | null;
 }
 
 export function BonusHuntBoard({
@@ -126,6 +133,7 @@ export function BonusHuntBoard({
   const [form, setForm] = useState({ slotName: "", provider: "", imageUrl: "", bet: "" });
   const [balanceInput, setBalanceInput] = useState(startingBalance);
   const [prediction, setPrediction] = useState<PredictionState>(initialPrediction);
+  const [prizeInputs, setPrizeInputs] = useState({ rank1: "", rank2: "", rank3: "" });
 
   // Polls while mounted — guesses arrive via the Kick webhook, not through
   // this admin session, so nothing else would otherwise update this view.
@@ -160,7 +168,12 @@ export function BonusHuntBoard({
   const totalPayout = opened.reduce((sum, b) => sum + Number(b.payout), 0);
   const openedCost = opened.reduce((sum, b) => sum + Number(b.bet), 0);
   const averageX = openedCost > 0 ? totalPayout / openedCost : 0;
-  const profit = totalPayout - totalCost;
+  // Profit/Loss is against the starting balance (what the account actually
+  // gained or lost), not total bet size — those are unrelated numbers; a
+  // slot's listed "bet" is just the stake level it hit at, not money spent
+  // out of this balance to buy the bonus.
+  const profit = totalPayout - Number(startingBalance);
+  const profitPercent = Number(startingBalance) > 0 ? (profit / Number(startingBalance)) * 100 : 0;
   const pendingCost = totalCost - openedCost;
   const remainingToBreakEven = totalCost - totalPayout;
   const requiredAvgX =
@@ -172,7 +185,10 @@ export function BonusHuntBoard({
     { label: "Starting Balance", value: currency.format(Number(startingBalance)) },
     { label: "Total Cost", value: currency.format(totalCost) },
     { label: "Total Payout", value: currency.format(totalPayout) },
-    { label: "Profit / Loss", value: `${profit >= 0 ? "+" : ""}${currency.format(profit)}` },
+    {
+      label: "Profit / Loss",
+      value: `${profit >= 0 ? "+" : ""}${currency.format(profit)} (${profit >= 0 ? "+" : ""}${profitPercent.toFixed(1)}%)`,
+    },
     { label: "Average X", value: `${averageX.toFixed(2)}x` },
     {
       label: "Required Avg X",
@@ -286,44 +302,95 @@ export function BonusHuntBoard({
           ) : null}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 p-4">
-          {prediction.round.active ? (
-            <button
-              onClick={() => callPredictionApi({ action: "stop" })}
-              disabled={busy}
-              className="flex items-center gap-1.5 rounded-lg border border-red-400/30 px-3 py-1.5 text-xs font-bold text-red-300 hover:bg-red-400/10 disabled:opacity-50"
-            >
-              <Icon name="stop" className="h-3 w-3" />
-              Stop guessing
-            </button>
-          ) : (
-            <button
-              onClick={() => callPredictionApi({ action: "start" })}
-              disabled={busy}
-              className="flex items-center gap-1.5 rounded-lg bg-emerald-400 px-3 py-1.5 text-xs font-bold text-black disabled:opacity-50"
-            >
-              <Icon name="bolt" className="h-3 w-3" />
-              Start guessing
-            </button>
-          )}
-          {prediction.guessCount > 0 ? (
-            <button
-              onClick={() => {
-                if (confirm("Clear every guess collected so far?")) {
-                  callPredictionApi({ action: "clear" });
+        <div className="p-4">
+          {!prediction.round.active ? (
+            <div className="flex flex-wrap items-end gap-2">
+              <div>
+                <label className="text-[10px] font-semibold tracking-wide text-white/40 uppercase">
+                  1st prize
+                </label>
+                <input
+                  value={prizeInputs.rank1}
+                  onChange={(e) => setPrizeInputs({ ...prizeInputs, rank1: e.target.value })}
+                  placeholder="$0"
+                  className="mt-1 block w-20 rounded-md border border-white/10 bg-zinc-900 px-2 py-1.5 text-sm text-white"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold tracking-wide text-white/40 uppercase">
+                  2nd prize
+                </label>
+                <input
+                  value={prizeInputs.rank2}
+                  onChange={(e) => setPrizeInputs({ ...prizeInputs, rank2: e.target.value })}
+                  placeholder="$0"
+                  className="mt-1 block w-20 rounded-md border border-white/10 bg-zinc-900 px-2 py-1.5 text-sm text-white"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold tracking-wide text-white/40 uppercase">
+                  3rd prize
+                </label>
+                <input
+                  value={prizeInputs.rank3}
+                  onChange={(e) => setPrizeInputs({ ...prizeInputs, rank3: e.target.value })}
+                  placeholder="$0"
+                  className="mt-1 block w-20 rounded-md border border-white/10 bg-zinc-900 px-2 py-1.5 text-sm text-white"
+                />
+              </div>
+              <button
+                onClick={() =>
+                  callPredictionApi({
+                    action: "start",
+                    rank1Prize: prizeInputs.rank1,
+                    rank2Prize: prizeInputs.rank2,
+                    rank3Prize: prizeInputs.rank3,
+                  })
                 }
-              }}
-              disabled={busy}
-              className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-white/50 hover:border-white/20 hover:text-white disabled:opacity-50"
-            >
-              Clear guesses
-            </button>
-          ) : null}
-          <p className="text-xs text-white/40">
-            Viewers type{" "}
-            <span className="font-semibold text-white/70">!gb &lt;amount&gt;</span>{" "}
-            in chat to guess the hunt&apos;s final balance.
-          </p>
+                disabled={busy}
+                className="flex items-center gap-1.5 rounded-lg bg-emerald-400 px-3 py-2 text-xs font-bold text-black disabled:opacity-50"
+              >
+                <Icon name="bolt" className="h-3 w-3" />
+                Start guessing
+              </button>
+              <p className="w-full text-xs text-white/40">
+                Leave a prize blank for fewer than 3 paid places. Viewers type{" "}
+                <span className="font-semibold text-white/70">!gb &lt;amount&gt;</span>{" "}
+                in chat to guess the hunt&apos;s final balance.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => callPredictionApi({ action: "stop" })}
+                disabled={busy}
+                className="flex items-center gap-1.5 rounded-lg border border-red-400/30 px-3 py-1.5 text-xs font-bold text-red-300 hover:bg-red-400/10 disabled:opacity-50"
+              >
+                <Icon name="stop" className="h-3 w-3" />
+                Stop guessing
+              </button>
+              {prediction.guessCount > 0 ? (
+                <button
+                  onClick={() => {
+                    if (confirm("Clear every guess collected so far?")) {
+                      callPredictionApi({ action: "clear" });
+                    }
+                  }}
+                  disabled={busy}
+                  className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-white/50 hover:border-white/20 hover:text-white disabled:opacity-50"
+                >
+                  Clear guesses
+                </button>
+              ) : null}
+              <p className="text-xs text-white/40">
+                Paying{" "}
+                {[prediction.round.rank1Prize, prediction.round.rank2Prize, prediction.round.rank3Prize]
+                  .map((p, i) => (Number(p) > 0 ? `#${i + 1} ${currency.format(Number(p))}` : null))
+                  .filter(Boolean)
+                  .join(" · ") || "no prizes set"}
+              </p>
+            </div>
+          )}
         </div>
 
         {prediction.final ? (
@@ -346,6 +413,11 @@ export function BonusHuntBoard({
                       <span className="text-white/30">
                         (off by {currency.format(g.offBy)})
                       </span>
+                      {g.prize > 0 ? (
+                        <span className="ml-2 font-semibold text-emerald-300">
+                          +{currency.format(g.prize)}
+                        </span>
+                      ) : null}
                     </span>
                   </li>
                 ))}

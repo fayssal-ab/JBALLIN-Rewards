@@ -64,6 +64,11 @@ export default async function PredictionPage() {
             {currency.format(final.finalBalance)}
           </p>
           <p className="mt-1 text-sm text-white/50">Final balance</p>
+          {final.prizePool > 0 ? (
+            <p className="mt-3 inline-block rounded-full border border-emerald-400/30 bg-emerald-400/5 px-3 py-1 text-xs font-semibold text-emerald-300">
+              Prize pool: {currency.format(final.prizePool)}
+            </p>
+          ) : null}
 
           {final.ranked.length > 0 ? (
             <div className="mx-auto mt-8 max-w-md space-y-2">
@@ -84,11 +89,16 @@ export default async function PredictionPage() {
                     )}
                     {g.username}
                   </span>
-                  <span className="text-sm text-white/60">
+                  <span className="text-right text-sm text-white/60">
                     guessed {currency.format(Number(g.guess))}{" "}
                     <span className="text-white/30">
                       (off by {currency.format(g.offBy)})
                     </span>
+                    {g.prize > 0 ? (
+                      <span className="ml-1.5 block font-semibold text-emerald-300">
+                        +{currency.format(g.prize)}
+                      </span>
+                    ) : null}
                   </span>
                 </div>
               ))}
@@ -108,6 +118,15 @@ export default async function PredictionPage() {
             </span>
             Live
           </span>
+
+          {Number(round.rank1Prize) > 0 ? (
+            <p className="mt-3 text-xs font-semibold text-emerald-300">
+              {[round.rank1Prize, round.rank2Prize, round.rank3Prize]
+                .map((p, i) => (Number(p) > 0 ? `#${i + 1} ${currency.format(Number(p))}` : null))
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          ) : null}
 
           <div className="mx-auto mt-6 grid max-w-sm grid-cols-2 gap-4 text-center">
             <div>
@@ -187,6 +206,11 @@ export default async function PredictionPage() {
                     </span>
                     <span className="mt-0.5 block text-white/40">
                       guessed {currency.format(Number(h.winner_guess))}
+                      {h.winner_prize && Number(h.winner_prize) > 0 ? (
+                        <span className="ml-1.5 font-semibold text-emerald-300">
+                          +{currency.format(Number(h.winner_prize))}
+                        </span>
+                      ) : null}
                     </span>
                   </p>
                 ) : (

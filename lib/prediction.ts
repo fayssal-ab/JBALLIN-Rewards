@@ -6,6 +6,9 @@ import { getBonusHunt } from "./bonusHunt";
 export interface GuessBalanceRound {
   active: boolean;
   started_at: string | null;
+  rank1Prize: string;
+  rank2Prize: string;
+  rank3Prize: string;
 }
 
 export interface BalanceGuess {
@@ -16,30 +19,45 @@ export interface BalanceGuess {
 export interface RankedGuess extends BalanceGuess {
   offBy: number;
   rank: number;
+  prize: number;
 }
 
 export interface FinalBalanceResult {
   finalBalance: number;
+  prizePool: number;
   ranked: RankedGuess[];
 }
 
 export async function getGuessBalanceRound(): Promise<GuessBalanceRound> {
   const [rows] = await getPool().query<RowDataPacket[]>(
-    "SELECT active, started_at FROM guess_balance_round WHERE id = 1"
+    "SELECT active, started_at, rank1_prize, rank2_prize, rank3_prize FROM guess_balance_round WHERE id = 1"
   );
   const row = rows[0];
   return {
     active: Boolean(row?.active),
     started_at: (row?.started_at as string | undefined) ?? null,
+    rank1Prize: (row?.rank1_prize as string | undefined) ?? "0",
+    rank2Prize: (row?.rank2_prize as string | undefined) ?? "0",
+    rank3Prize: (row?.rank3_prize as string | undefined) ?? "0",
   };
 }
 
-// Fresh round — clears whatever the previous hunt's guesses were.
-export async function startGuessBalanceRound(): Promise<void> {
+// Fresh round — clears whatever the previous hunt's guesses were. Prizes
+// default to 0 (that place doesn't pay) when not given, so the admin can
+// run a 1-, 2-, or 3-winner round just by which fields they fill in.
+export async function startGuessBalanceRound(prizes: {
+  rank1Prize?: string;
+  rank2Prize?: string;
+  rank3Prize?: string;
+}): Promise<void> {
   const pool = getPool();
   await pool.query("DELETE FROM guess_balance_guesses");
   await pool.query(
-    "UPDATE guess_balance_round SET active = 1, started_at = CURRENT_TIMESTAMP WHERE id = 1"
+    `UPDATE guess_balance_round
+     SET active = 1, started_at = CURRENT_TIMESTAMP,
+         rank1_prize = ?, rank2_prize = ?, rank3_prize = ?
+     WHERE id = 1`,
+    [prizes.rank1Prize || "0", prizes.rank2Prize || "0", prizes.rank3Prize || "0"]
   );
 }
 
@@ -86,13 +104,16 @@ export async function getFinalBalanceIfHuntComplete(): Promise<FinalBalanceResul
   const totalPayout = entries.reduce((sum, e) => sum + Number(e.payout), 0);
   const finalBalance = Number(startingBalance) + totalPayout;
 
+  const round = await getGuessBalanceRound();
+  const prizeByRank = [Number(round.rank1Prize), Number(round.rank2Prize), Number(round.rank3Prize)];
+
   const guesses = await getBalanceGuesses();
   const ranked = guesses
     .map((g) => ({ ...g, offBy: Math.abs(Number(g.guess) - finalBalance) }))
     .sort((a, b) => a.offBy - b.offBy)
-    .map((g, i) => ({ ...g, rank: i + 1 }));
+    .map((g, i) => ({ ...g, rank: i + 1, prize: prizeByRank[i] ?? 0 }));
 
-  return { finalBalance, ranked };
+  return { finalBalance, prizePool: prizeByRank.reduce((a, b) => a + b, 0), ranked };
 }
 
 export interface GuessBalanceHistoryEntry {
@@ -102,6 +123,7 @@ export interface GuessBalanceHistoryEntry {
   guess_count: number;
   winner_username: string | null;
   winner_guess: string | null;
+  winner_prize: string | null;
   resolved_at: string;
 }
 
@@ -124,14 +146,15 @@ export async function archiveGuessBalanceRoundIfResolved(): Promise<void> {
 
   await getPool().query(
     `INSERT INTO guess_balance_history
-       (starting_balance, final_balance, guess_count, winner_username, winner_guess)
-     VALUES (?, ?, ?, ?, ?)`,
+       (starting_balance, final_balance, guess_count, winner_username, winner_guess, winner_prize)
+     VALUES (?, ?, ?, ?, ?, ?)`,
     [
       startingBalance,
       final.finalBalance,
       final.ranked.length,
       winner?.username ?? null,
       winner?.guess ?? null,
+      winner ? winner.prize : null,
     ]
   );
 
@@ -141,7 +164,7 @@ export async function archiveGuessBalanceRoundIfResolved(): Promise<void> {
 
 export async function getGuessBalanceHistory(limit = 12): Promise<GuessBalanceHistoryEntry[]> {
   const [rows] = await getPool().query<RowDataPacket[]>(
-    `SELECT id, starting_balance, final_balance, guess_count, winner_username, winner_guess, resolved_at
+    `SELECT id, starting_balance, final_balance, guess_count, winner_username, winner_guess, winner_prize, resolved_at
      FROM guess_balance_history
      ORDER BY resolved_at DESC
      LIMIT ?`,
