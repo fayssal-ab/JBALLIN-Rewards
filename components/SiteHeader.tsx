@@ -36,7 +36,7 @@ export function SiteHeader() {
               logo
             </div>
           )}
-          <span className="font-display text-lg tracking-wide text-white">
+          <span className="font-brand text-lg tracking-wide text-white">
             JBALLIN
           </span>
         </Link>

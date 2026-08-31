@@ -3,6 +3,10 @@
 @theme inline {
   --font-sans: var(--font-inter);
   --font-display: var(--font-bangers);
+  /* Navbar/footer "JBALLIN" wordmark only — a second bold display face,
+     distinct from --font-display so the brand mark reads as its own thing
+     rather than just another heading. */
+  --font-brand: var(--font-righteous);
 }
 
 :root {

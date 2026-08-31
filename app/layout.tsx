@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bangers, Inter } from "next/font/google";
+import { Bangers, Righteous, Inter } from "next/font/google";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -10,6 +10,15 @@ import "./globals.css";
 // through the --font-display -> --font-bangers chain in globals.css.
 const bangers = Bangers({
   variable: "--font-bangers",
+  weight: "400",
+  subsets: ["latin"],
+});
+
+// Second display face, same bold-urban energy as Bangers but distinct —
+// used just for the "JBALLIN" wordmark in the navbar and footer (see
+// --font-brand in globals.css), not the general font-display headings.
+const righteous = Righteous({
+  variable: "--font-righteous",
   weight: "400",
   subsets: ["latin"],
 });
@@ -60,7 +69,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${bangers.variable} ${inter.variable}`}>
+    <html lang="en" className={`${bangers.variable} ${righteous.variable} ${inter.variable}`}>
       <body className="relative font-sans">
         <AnimatedBackground />
         <SiteHeader />

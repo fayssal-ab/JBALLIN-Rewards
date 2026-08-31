@@ -54,7 +54,7 @@ export default async function Home() {
       {/* Hero */}
       <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 text-center">
         <HeroParticles />
-        <p className="relative z-10 text-sm tracking-[0.3em] text-white/50 uppercase">
+        <p className="relative z-10 text-sm font-semibold tracking-[0.3em] text-white/50 uppercase">
           Welcome to
         </p>
         <h1 className="font-display animate-shimmer-text relative z-10 mt-4 bg-gradient-to-b from-white via-zinc-100 to-zinc-400 bg-clip-text text-6xl leading-[0.95] tracking-wide uppercase text-transparent drop-shadow-[0_0_45px_rgba(52,211,153,0.2)] sm:text-8xl sm:tracking-widest lg:text-9xl">
@@ -63,7 +63,7 @@ export default async function Home() {
           Rewards
         </h1>
         <Divider className="relative z-10 my-6" />
-        <p className="relative z-10 max-w-xl text-balance text-white/60">
+        <p className="relative z-10 max-w-xl text-balance font-medium text-white/60">
           Sign up under code{" "}
           <span className="font-semibold text-emerald-300">JBALLIN</span> on
           Rainbet, wager, and climb the leaderboard for a share of the prize
