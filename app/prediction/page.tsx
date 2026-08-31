@@ -1,4 +1,5 @@
 import { Icon } from "@/components/Icon";
+import { ChampionBadge } from "@/components/ChampionBadge";
 import { getBonusHunt } from "@/lib/bonusHunt";
 import {
   getGuessBalanceRound,
@@ -81,11 +82,11 @@ export default async function PredictionPage() {
                       : "border-white/10 bg-zinc-900/40"
                   }`}
                 >
-                  <span className="flex items-center gap-2 font-medium text-white">
+                  <span className="flex items-center gap-2.5 font-medium text-white">
                     {g.rank === 1 ? (
-                      <Icon name="crown" className="h-4 w-4 text-emerald-300" />
+                      <ChampionBadge className="h-9 w-9 shrink-0 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
                     ) : (
-                      <span className="text-white/40">#{g.rank}</span>
+                      <span className="w-9 shrink-0 text-center text-white/40">#{g.rank}</span>
                     )}
                     {g.username}
                   </span>
@@ -201,7 +202,7 @@ export default async function PredictionPage() {
                 {h.winner_username ? (
                   <p className="mt-4 text-sm">
                     <span className="flex items-center gap-1.5 font-semibold text-emerald-300">
-                      <Icon name="crown" className="h-3.5 w-3.5 shrink-0" />
+                      <ChampionBadge className="h-6 w-6 shrink-0" />
                       <span className="truncate">{h.winner_username}</span>
                     </span>
                     <span className="mt-0.5 block text-white/40">

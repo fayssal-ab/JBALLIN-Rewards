@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { TournamentSlots, Round } from "@/lib/tournament";
 import { Icon } from "@/components/Icon";
+import { ChampionBadge } from "@/components/ChampionBadge";
 
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -282,8 +283,8 @@ export function TournamentBoard({
           Champion
         </p>
         <div className="animate-glow-pulse mt-3 rounded-2xl border border-emerald-400/30 bg-gradient-to-b from-emerald-400/10 to-transparent p-8">
-          <span className="animate-crown-bounce inline-block">
-            <Icon name="crown" className="h-10 w-10 text-emerald-300" />
+          <span className="animate-crown-bounce inline-block drop-shadow-[0_0_14px_rgba(52,211,153,0.6)]">
+            <ChampionBadge className="h-20 w-20" />
           </span>
           <div className="mt-3">
             <SlotBox name={champion} highlight onSave={(value) => save(4, 0, value)} />
