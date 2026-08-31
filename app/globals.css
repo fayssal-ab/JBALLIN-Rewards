@@ -33,6 +33,13 @@
     background: var(--background);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Plants vs Zombies cursor pack (public/curseur/) — the pack's .ani
+       files (Sun, Spinning Peashooter) are animated Windows cursors with
+       no browser support at all in CSS `cursor`, so only the two static
+       .cur files are usable here. Re-exported as PNG at a sane size (the
+       source Gloves.cur was 220x220 — way too big on screen) with hotspots
+       scaled to match. */
+    cursor: url("/curseur/pointer.png") 1 0, auto;
   }
 
   * {
@@ -41,6 +48,16 @@
 
   a {
     color: inherit;
+  }
+
+  a,
+  button,
+  [role="button"],
+  input,
+  select,
+  textarea,
+  label {
+    cursor: url("/curseur/gloves.png") 40 1, pointer;
   }
 }
 
