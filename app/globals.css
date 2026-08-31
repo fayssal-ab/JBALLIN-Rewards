@@ -35,6 +35,11 @@
     min-height: 100%;
     color: var(--foreground);
     background: var(--background);
+    /* A bit heavier than the browser default (400) sitewide, so regular
+       text reads with the same energetic weight as the bold display type
+       around it — anything with its own Tailwind font-weight utility
+       still overrides this normally. */
+    font-weight: 500;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     /* Plants vs Zombies cursor pack (public/curseur/) — the pack's .ani
@@ -134,26 +139,53 @@
   animation: shimmer-text 6s linear infinite;
 }
 
-@keyframes particle-drift-a {
+/* Four full-range drift paths (not just a small wobble) so the "moving"
+   particles genuinely travel up/down and side to side, each on its own
+   diagonal so a handful running at once don't look synchronized. */
+@keyframes particle-drift-1 {
   0%,
   100% {
     transform: translate(0, 0) rotate(0deg);
-    opacity: 0.5;
+    opacity: 0.45;
   }
   50% {
-    transform: translate(24px, -30px) rotate(12deg);
+    transform: translate(70px, 90px) rotate(15deg);
     opacity: 0.9;
   }
 }
 
-@keyframes particle-drift-b {
+@keyframes particle-drift-2 {
   0%,
   100% {
     transform: translate(0, 0) rotate(0deg);
-    opacity: 0.5;
+    opacity: 0.45;
   }
   50% {
-    transform: translate(-28px, 26px) rotate(-10deg);
+    transform: translate(-80px, -70px) rotate(-14deg);
+    opacity: 0.9;
+  }
+}
+
+@keyframes particle-drift-3 {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translate(-60px, 100px) rotate(-18deg);
+    opacity: 0.9;
+  }
+}
+
+@keyframes particle-drift-4 {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translate(90px, -80px) rotate(16deg);
     opacity: 0.9;
   }
 }

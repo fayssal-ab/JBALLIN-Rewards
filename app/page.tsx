@@ -9,7 +9,6 @@ import {
   YOUTUBE_URL,
 } from "@/lib/constants";
 import { SocialIcon } from "@/components/SocialIcon";
-import { HeroParticles } from "@/components/HeroParticles";
 import { getLatestVideo } from "@/lib/youtube";
 
 function Divider({ className = "" }: { className?: string }) {
@@ -53,7 +52,6 @@ export default async function Home() {
     <div>
       {/* Hero */}
       <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 text-center">
-        <HeroParticles />
         <p className="relative z-10 text-sm font-semibold tracking-[0.3em] text-white/50 uppercase">
           Welcome to
         </p>

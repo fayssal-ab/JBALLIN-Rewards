@@ -46,7 +46,7 @@ export function SiteHeader() {
             <Link
               key={link.href}
               href={link.href}
-              className="group relative rounded-lg px-2.5 py-2 text-[13px] font-medium text-white/70 transition-all duration-200 hover:bg-emerald-400/10 hover:text-emerald-300"
+              className="group relative rounded-lg px-2.5 py-2 text-[13px] font-bold text-white/70 transition-all duration-200 hover:bg-emerald-400/10 hover:text-emerald-300"
             >
               {link.label}
               <span className="absolute bottom-1 left-3 right-3 h-px scale-x-0 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] transition-transform duration-300 group-hover:scale-x-100" />

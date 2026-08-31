@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { FloatingParticles } from "@/components/FloatingParticles";
 
 // "Pure CSS Parallax Pixel Stars" (the classic CodePen effect, ported from
 // its original Sass `multiple-box-shadow($n)` random-position generator).
@@ -48,6 +49,8 @@ export function AnimatedBackground() {
         <div className="grid-floor-horizon" />
         <div className="grid-floor" />
       </div>
+
+      <FloatingParticles />
     </div>
   );
 }
