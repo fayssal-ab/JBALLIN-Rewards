@@ -48,7 +48,7 @@ export function MobileNav() {
               key={link.href}
               href={link.href}
               onClick={() => setOpen(false)}
-              className="block rounded-lg px-4 py-3 text-sm font-bold text-white/80 transition-colors hover:bg-emerald-400/10 hover:text-emerald-300"
+              className="font-brand block rounded-lg px-4 py-3 text-base tracking-wide text-white/80 transition-colors hover:bg-emerald-400/10 hover:text-emerald-300"
             >
               {link.label}
             </Link>

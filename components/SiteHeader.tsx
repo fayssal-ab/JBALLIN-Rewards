@@ -17,14 +17,13 @@ const NAV_LINKS = [
   { label: "Instructions", href: "/instructions" },
 ];
 
-// Full-width flat bar instead of a floating rounded card — the pattern
-// real bold brand sites (100 Thieves, G Fuel, the direct competitor this
-// project benchmarks against) actually use: no border, no clipped shape,
-// just a solid bar and confident bold type carrying the "cool" factor.
+// Floating glass pill — back to this shape (the flat full-black bar didn't
+// land) with one real change: nav links now use the same bold display face
+// as the JBALLIN wordmark (font-brand) instead of plain sans text.
 export function SiteHeader() {
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-black/90 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5">
+    <header className="fixed inset-x-0 top-0 z-50 px-4 pt-4">
+      <div className="mx-auto flex max-w-6xl items-center justify-between rounded-2xl border border-white/10 bg-black/60 px-5 py-3 shadow-lg shadow-black/40 backdrop-blur-xl">
         <Link href="/" className="flex items-center gap-3">
           {hasLogo ? (
             <Image
@@ -45,25 +44,25 @@ export function SiteHeader() {
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-6 lg:flex">
+        <nav className="hidden items-center gap-1 lg:flex">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="group relative py-1 text-[13px] font-bold tracking-wide text-white/70 uppercase transition-colors duration-150 hover:text-emerald-300"
+              className="group relative rounded-lg px-3 py-2 font-brand text-sm tracking-wide text-white/70 transition-all duration-200 hover:bg-emerald-400/10 hover:text-emerald-300"
             >
               {link.label}
-              <span className="absolute -bottom-0.5 left-0 h-[2px] w-full origin-left scale-x-0 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] transition-transform duration-200 ease-out group-hover:scale-x-100" />
+              <span className="absolute bottom-1 left-3 right-3 h-px scale-x-0 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] transition-transform duration-300 group-hover:scale-x-100" />
             </Link>
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <a
             href={RAINBET_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wide text-black uppercase transition-transform hover:scale-105"
+            className="rounded-lg bg-white px-3 py-2 text-xs font-bold tracking-wide text-black uppercase transition-transform hover:scale-105 sm:px-4"
           >
             Sign Up
           </a>
