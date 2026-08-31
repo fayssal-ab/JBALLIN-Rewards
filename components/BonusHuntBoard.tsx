@@ -102,14 +102,61 @@ function SlotNameInput({
 export function BonusHuntBoard({
   entries,
   startingBalance,
+  initialActivePredictionId,
 }: {
   entries: BonusHuntEntry[];
   startingBalance: string;
+  initialActivePredictionId: number | null;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ slotName: "", provider: "", imageUrl: "", bet: "" });
   const [balanceInput, setBalanceInput] = useState(startingBalance);
+  const [activePredictionId, setActivePredictionId] = useState(initialActivePredictionId);
+  const [guessCount, setGuessCount] = useState(0);
+
+  // Polls guess count while a round is live — chat entries arrive via the
+  // Kick webhook, not through this admin session, so nothing else would
+  // otherwise update this view.
+  useEffect(() => {
+    let cancelled = false;
+    async function poll() {
+      const res = await fetch("/api/admin/prediction");
+      if (!res.ok || cancelled) return;
+      const data = await res.json();
+      setActivePredictionId(data.entryId);
+      setGuessCount(data.guessCount);
+    }
+    poll();
+    const interval = setInterval(poll, 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  async function startGuessing(id: number) {
+    setBusy(true);
+    await fetch("/api/admin/prediction", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "start", entryId: id }),
+    });
+    setActivePredictionId(id);
+    setGuessCount(0);
+    setBusy(false);
+  }
+
+  async function stopGuessing() {
+    setBusy(true);
+    await fetch("/api/admin/prediction", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "stop" }),
+    });
+    setActivePredictionId(null);
+    setBusy(false);
+  }
 
   const totalCost = entries.reduce((sum, b) => sum + Number(b.bet), 0);
   const opened = entries.filter((b) => b.payout !== null);
@@ -276,6 +323,7 @@ export function BonusHuntBoard({
                 <th className="px-6 py-3 text-right font-medium">Bet</th>
                 <th className="px-6 py-3 text-right font-medium">Payout</th>
                 <th className="px-6 py-3 text-right font-medium">Mult.</th>
+                <th className="px-6 py-3 text-center font-medium">Predict</th>
                 <th className="px-6 py-3" />
               </tr>
             </thead>
@@ -325,6 +373,32 @@ export function BonusHuntBoard({
                     </td>
                     <td className="px-6 py-3 text-right font-semibold text-emerald-300">
                       {mult !== null ? `${mult.toFixed(1)}x` : "—"}
+                    </td>
+                    <td className="px-6 py-3 text-center">
+                      {b.payout !== null ? null : activePredictionId === b.id ? (
+                        <button
+                          onClick={stopGuessing}
+                          disabled={busy}
+                          title="Stop the live guessing round"
+                          className="inline-flex items-center gap-1 rounded-full border border-red-400/30 px-2.5 py-1 text-[11px] font-semibold text-red-300 hover:bg-red-400/10 disabled:opacity-50"
+                        >
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
+                          </span>
+                          Live · {guessCount}
+                        </button>
+                      ) : activePredictionId === null ? (
+                        <button
+                          onClick={() => startGuessing(b.id)}
+                          disabled={busy}
+                          title="Open this slot for Kick-chat guesses (!gb <amount>)"
+                          className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-[11px] font-semibold text-white/50 hover:border-emerald-400/30 hover:text-emerald-300 disabled:opacity-50"
+                        >
+                          <Icon name="target" className="h-3 w-3" />
+                          Guess
+                        </button>
+                      ) : null}
                     </td>
                     <td className="px-6 py-3 text-right">
                       <button

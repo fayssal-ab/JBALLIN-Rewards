@@ -11,7 +11,7 @@ import { SocialIcon } from "@/components/SocialIcon";
 const PLATFORM_LINKS = [
   { label: "Home", href: "/" },
   { label: "Leaderboard", href: "/leaderboard" },
-  { label: "Milestones", href: "/milestones" },
+  { label: "Prediction", href: "/prediction" },
   { label: "Store", href: "/store" },
 ];
 

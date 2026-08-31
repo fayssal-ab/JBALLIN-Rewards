@@ -1,4 +1,5 @@
 import { getBonusHunt } from "@/lib/bonusHunt";
+import { getActivePredictionEntryId } from "@/lib/prediction";
 import { isAdminSession } from "@/lib/admin";
 import { BonusHuntBoard } from "@/components/BonusHuntBoard";
 
@@ -10,7 +11,10 @@ export default async function AdminBonusHuntPage() {
   // check has to happen here too, before any query.
   if (!(await isAdminSession())) return null;
 
-  const { entries, startingBalance } = await getBonusHunt();
+  const [{ entries, startingBalance }, activePredictionId] = await Promise.all([
+    getBonusHunt(),
+    getActivePredictionEntryId(),
+  ]);
 
   return (
     <div>
@@ -21,7 +25,11 @@ export default async function AdminBonusHuntPage() {
         Bonus Hunt
       </h1>
 
-      <BonusHuntBoard entries={entries} startingBalance={startingBalance} />
+      <BonusHuntBoard
+        entries={entries}
+        startingBalance={startingBalance}
+        initialActivePredictionId={activePredictionId}
+      />
     </div>
   );
 }

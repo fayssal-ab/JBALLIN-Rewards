@@ -1,12 +1,12 @@
 import type { MetadataRoute } from "next";
 
-const SITE_URL = "https://jbalin.netlify.app";
+const SITE_URL = "https://jballin.com";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const routes = [
     "",
     "/leaderboard",
-    "/milestones",
+    "/prediction",
     "/store",
     "/referral",
     "/instructions",

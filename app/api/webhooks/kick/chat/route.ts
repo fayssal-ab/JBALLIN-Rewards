@@ -2,6 +2,7 @@ import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import { verifyKickWebhookSignature } from "@/lib/kick";
 import { recordGiveawayEntryIfMatches } from "@/lib/giveawaySession";
+import { recordPredictionGuessIfActive } from "@/lib/prediction";
 
 // Public endpoint — Kick posts here for every chat.message.sent event once
 // subscribed (see the "connect" admin action). Auth is the RSA signature,
@@ -43,7 +44,10 @@ export async function POST(request: NextRequest) {
   }
 
   const payload = JSON.parse(rawBody) as ChatMessageSentPayload;
-  await recordGiveawayEntryIfMatches(payload.sender.username, payload.content);
+  await Promise.all([
+    recordGiveawayEntryIfMatches(payload.sender.username, payload.content),
+    recordPredictionGuessIfActive(payload.sender.username, payload.content),
+  ]);
 
   return NextResponse.json({ ok: true });
 }

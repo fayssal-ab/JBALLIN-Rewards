@@ -220,7 +220,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Leaderboard / Milestones teaser */}
+      {/* Leaderboard / Prediction teaser */}
       <section className="relative mx-auto max-w-6xl px-6 py-24">
         <div className="grid gap-6 sm:grid-cols-2">
           <div className="rounded-3xl border border-white/10 bg-zinc-900/40 p-8 text-center transition-colors hover:border-emerald-400/30">
@@ -241,16 +241,17 @@ export default async function Home() {
 
           <div className="rounded-3xl border border-white/10 bg-zinc-900/40 p-8 text-center transition-colors hover:border-emerald-400/30">
             <h3 className="font-display text-2xl uppercase text-white">
-              Wager Milestones
+              Guess The Bonus
             </h3>
             <p className="mt-3 text-sm text-white/60">
-              Hit wager milestones to unlock extra rewards along the way.
+              Type !gb in Kick chat to guess a live bonus&apos;s payout —
+              closest guess wins.
             </p>
             <Link
-              href="/milestones"
+              href="/prediction"
               className="mt-6 inline-block rounded-lg border border-white/20 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:border-emerald-400/40 hover:bg-white/10"
             >
-              Browse Milestones
+              Play Prediction
             </Link>
           </div>
         </div>

@@ -11,7 +11,7 @@ const hasLogo = existsSync(join(process.cwd(), "public", LOGO_SRC));
 const NAV_LINKS = [
   { label: "Home", href: "/" },
   { label: "Leaderboard", href: "/leaderboard" },
-  { label: "Milestones", href: "/milestones" },
+  { label: "Prediction", href: "/prediction" },
   { label: "Store", href: "/store" },
   { label: "Referral Program", href: "/referral" },
   { label: "Instructions", href: "/instructions" },
