@@ -4,6 +4,7 @@ import {
   getGuessBalanceRound,
   getBalanceGuesses,
   getFinalBalanceIfHuntComplete,
+  getGuessBalanceHistory,
 } from "@/lib/prediction";
 
 // Live guesses come in through the Kick webhook, not a page navigation —
@@ -16,12 +17,21 @@ const currency = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
 });
 
+function dateLabel(dateStr: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(dateStr));
+}
+
 export default async function PredictionPage() {
-  const [{ startingBalance, entries }, round, guesses, final] = await Promise.all([
+  const [{ startingBalance, entries }, round, guesses, final, history] = await Promise.all([
     getBonusHunt(),
     getGuessBalanceRound(),
     getBalanceGuesses(),
     getFinalBalanceIfHuntComplete(),
+    getGuessBalanceHistory(),
   ]);
 
   const opened = entries.filter((e) => e.payout !== null);
@@ -145,6 +155,51 @@ export default async function PredictionPage() {
           goes live on stream.
         </div>
       )}
+
+      {history.length > 0 ? (
+        <div className="mt-16">
+          <p className="text-center text-xs tracking-[0.3em] text-white/40 uppercase">
+            Previous Hunts
+          </p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {history.map((h) => (
+              <div
+                key={h.id}
+                className="rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-900/50 to-zinc-950/50 p-5 transition-colors hover:border-emerald-400/30"
+              >
+                <p className="text-[10px] tracking-wide text-white/30 uppercase">
+                  {dateLabel(h.resolved_at)}
+                </p>
+                <p className="font-display mt-1 text-2xl text-white">
+                  {currency.format(Number(h.final_balance))}
+                </p>
+                <p className="text-[10px] tracking-wide text-white/40 uppercase">
+                  Final Balance
+                </p>
+
+                <div className="mt-4 h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+                {h.winner_username ? (
+                  <p className="mt-4 text-sm">
+                    <span className="flex items-center gap-1.5 font-semibold text-emerald-300">
+                      <Icon name="crown" className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{h.winner_username}</span>
+                    </span>
+                    <span className="mt-0.5 block text-white/40">
+                      guessed {currency.format(Number(h.winner_guess))}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="mt-4 text-sm text-white/30">No guesses that round</p>
+                )}
+                <p className="mt-1 text-xs text-white/30">
+                  {h.guess_count} {h.guess_count === 1 ? "guess" : "guesses"} total
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

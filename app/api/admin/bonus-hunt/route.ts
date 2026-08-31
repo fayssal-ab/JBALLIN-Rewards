@@ -8,7 +8,7 @@ import {
   setStartingBalance,
   resetBonusHunt,
 } from "@/lib/bonusHunt";
-import { stopGuessBalanceRound, clearGuessBalanceGuesses } from "@/lib/prediction";
+import { archiveGuessBalanceRoundIfResolved } from "@/lib/prediction";
 
 type Body =
   | { action: "add"; slotName: string; provider?: string; imageUrl?: string; bet: string }
@@ -49,12 +49,10 @@ export async function POST(request: NextRequest) {
       await setStartingBalance(body.amount);
       break;
     case "reset":
+      // Must run before resetBonusHunt() wipes the entries/balance it
+      // reads to compute (and archive) the just-finished hunt's result.
+      await archiveGuessBalanceRoundIfResolved();
       await resetBonusHunt();
-      // A fresh hunt means the previous "Guess the Balance" round (if any)
-      // no longer means anything — close it and drop its guesses so the
-      // next hunt starts clean.
-      await stopGuessBalanceRound();
-      await clearGuessBalanceGuesses();
       break;
     default:
       return NextResponse.json({ error: "unknown_action" }, { status: 400 });

@@ -94,3 +94,58 @@ export async function getFinalBalanceIfHuntComplete(): Promise<FinalBalanceResul
 
   return { finalBalance, ranked };
 }
+
+export interface GuessBalanceHistoryEntry {
+  id: number;
+  starting_balance: string;
+  final_balance: string;
+  guess_count: number;
+  winner_username: string | null;
+  winner_guess: string | null;
+  resolved_at: string;
+}
+
+// If the current hunt has a resolved result, archives it as one compact
+// row (winner + a few numbers, not the full guess list) and then clears
+// the live round/guesses. Called from the "reset" action right before
+// resetBonusHunt() wipes the entries themselves — this is the only place
+// a hunt's result is ever known to be final, so it's the natural point to
+// snapshot it into history.
+export async function archiveGuessBalanceRoundIfResolved(): Promise<void> {
+  const final = await getFinalBalanceIfHuntComplete();
+  if (!final) {
+    await stopGuessBalanceRound();
+    await clearGuessBalanceGuesses();
+    return;
+  }
+
+  const { startingBalance } = await getBonusHunt();
+  const winner = final.ranked[0] ?? null;
+
+  await getPool().query(
+    `INSERT INTO guess_balance_history
+       (starting_balance, final_balance, guess_count, winner_username, winner_guess)
+     VALUES (?, ?, ?, ?, ?)`,
+    [
+      startingBalance,
+      final.finalBalance,
+      final.ranked.length,
+      winner?.username ?? null,
+      winner?.guess ?? null,
+    ]
+  );
+
+  await stopGuessBalanceRound();
+  await clearGuessBalanceGuesses();
+}
+
+export async function getGuessBalanceHistory(limit = 12): Promise<GuessBalanceHistoryEntry[]> {
+  const [rows] = await getPool().query<RowDataPacket[]>(
+    `SELECT id, starting_balance, final_balance, guess_count, winner_username, winner_guess, resolved_at
+     FROM guess_balance_history
+     ORDER BY resolved_at DESC
+     LIMIT ?`,
+    [limit]
+  );
+  return rows as GuessBalanceHistoryEntry[];
+}
