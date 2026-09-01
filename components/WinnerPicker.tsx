@@ -675,24 +675,25 @@ export function WinnerPicker() {
         </button>
       </div>
 
-      {/* Centered overlay so the winner is always visible on screen the
-          instant it lands — no scrolling down the page to find it. */}
+      {/* Rolls inline in the page, right where the reel already sits in the
+          layout — no fixed backdrop, no blur, nothing else dims. Just this
+          section appearing/updating in place. */}
       {reels ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) closeRollOverlay();
-          }}
-        >
-          <div className="relative w-full max-w-2xl">
-            <button
-              type="button"
-              onClick={closeRollOverlay}
-              aria-label="Close"
-              className="absolute -top-11 right-0 rounded-full border border-white/10 p-2 text-white/40 hover:border-white/30 hover:text-white"
-            >
-              <Icon name="close" className="h-4 w-4" />
-            </button>
+        <div className="mt-6 max-w-2xl">
+          <div className="relative">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-bold tracking-[0.3em] text-white/40 uppercase">
+                {rolling ? "Rolling…" : "Roll Result"}
+              </span>
+              <button
+                type="button"
+                onClick={closeRollOverlay}
+                aria-label="Close"
+                className="rounded-full border border-white/10 p-1.5 text-white/40 hover:border-white/30 hover:text-white"
+              >
+                <Icon name="close" className="h-3.5 w-3.5" />
+              </button>
+            </div>
 
             {/* One reel per winner — all spin together. Scrolls internally
                 once there are enough winners to overflow the viewport. */}
