@@ -20,7 +20,7 @@ const WHEEL_EXTRA_SPINS = 6;
 // wedge is basically the same green reads as a flat blob, not a wheel.
 const WHEEL_COLORS = ["#10b981", "#7c3aed", "#f59e0b", "#ef4444", "#06b6d4", "#ec4899"];
 
-const CONFETTI_COLORS = ["#34d399", "#ffffff", "#fbbf24"];
+const CONFETTI_COLORS = ["#ffd700", "#ffffff", "#fbbf24"];
 const CONFETTI_COUNT = 28;
 
 type Mode = "manual" | "kick";
@@ -70,27 +70,37 @@ function Avatar({
   username,
   avatarUrl,
   size = 32,
+  gold = false,
 }: {
   username: string;
   avatarUrl: string | null;
   size?: number;
+  // The winning avatar gets a gold ring instead of the site's usual
+  // emerald, so the actual prize moment reads as distinctly premium
+  // rather than just another emerald-tinted card like everything else.
+  gold?: boolean;
 }) {
   const [errored, setErrored] = useState(false);
+  const ringStyle = gold
+    ? { width: size, height: size, boxShadow: "0 0 0 2px #ffd700, 0 0 12px rgba(255,215,0,0.5)" }
+    : { width: size, height: size };
   if (avatarUrl && !errored) {
     return (
       <img
         src={avatarUrl}
         alt=""
         onError={() => setErrored(true)}
-        style={{ width: size, height: size }}
+        style={ringStyle}
         className="shrink-0 rounded-full object-cover"
       />
     );
   }
   return (
     <div
-      style={{ width: size, height: size }}
-      className="flex shrink-0 items-center justify-center rounded-full bg-emerald-400/10 text-xs font-bold text-emerald-300"
+      style={ringStyle}
+      className={`flex shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+        gold ? "bg-[#ffd700]/10 text-[#ffd700]" : "bg-emerald-400/10 text-emerald-300"
+      }`}
     >
       {username.slice(0, 2).toUpperCase()}
     </div>
@@ -372,11 +382,15 @@ export function WinnerPicker() {
     setRevealed(null);
   }
 
+  // Filler cards carry real avatars too, not just the landing one — the
+  // same URLs are already loaded in the Participants panel on this same
+  // page, so the browser serves them from cache instead of firing dozens
+  // of fresh requests per roll.
   function buildStrip(pool: Participant[], landing: Winner): ReelItem[] {
     return Array.from({ length: REEL_LENGTH }, (_, i) => {
       if (i === WINNER_INDEX) return { username: landing.username, avatarUrl: landing.avatarUrl };
       const p = pool[Math.floor(Math.random() * pool.length)];
-      return { username: p.username, avatarUrl: null };
+      return { username: p.username, avatarUrl: p.avatarUrl };
     });
   }
 
@@ -516,7 +530,7 @@ export function WinnerPicker() {
     if (!revealed) return null;
     const failedCount = revealed.filter((w) => w.qualifiesActive === false).length;
     return (
-      <div className="animate-glow-pulse relative mt-6 overflow-hidden rounded-2xl border-2 border-emerald-400/60 bg-gradient-to-b from-zinc-950 via-emerald-400/10 to-zinc-950 p-8 text-center shadow-[0_0_60px_rgba(52,211,153,0.35)]">
+      <div className="animate-glow-pulse relative mt-6 overflow-hidden rounded-2xl border-2 border-[#ffd700]/60 bg-gradient-to-b from-zinc-950 via-[#ffd700]/10 to-zinc-950 p-8 text-center shadow-[0_0_60px_rgba(255,215,0,0.3)]">
         {confetti.map((c) => (
           <span
             key={c.id}
@@ -530,9 +544,9 @@ export function WinnerPicker() {
           />
         ))}
         <span className="animate-crown-bounce inline-block">
-          <Icon name="crown" className="h-10 w-10 text-emerald-300" />
+          <Icon name="crown" className="h-10 w-10 text-[#ffd700]" />
         </span>
-        <p className="mt-1 flex items-center justify-center gap-1.5 text-xs tracking-[0.3em] text-emerald-400/60 uppercase">
+        <p className="mt-1 flex items-center justify-center gap-1.5 text-xs tracking-[0.3em] text-[#ffd700]/70 uppercase">
           <Icon name="trophy" className="h-4 w-4" />
           {revealed.length > 1 ? "Winners" : "Winner"}
         </p>
@@ -540,10 +554,17 @@ export function WinnerPicker() {
           {revealed.map((w) => (
             <div key={w.username} className="flex flex-col items-center gap-1">
               <div className="flex items-center justify-center gap-3">
-                <Avatar username={w.username} avatarUrl={w.avatarUrl} size={40} />
+                <Avatar
+                  username={w.username}
+                  avatarUrl={w.avatarUrl}
+                  size={40}
+                  gold={w.qualifiesActive !== false}
+                />
                 <span
                   className={`font-display animate-winner-pop text-3xl uppercase sm:text-4xl ${
-                    w.qualifiesActive === false ? "text-white/40" : "text-white"
+                    w.qualifiesActive === false
+                      ? "text-white/40"
+                      : "bg-gradient-to-b from-[#fff3c4] to-[#ffd700] bg-clip-text text-transparent"
                   }`}
                 >
                   {w.username}
@@ -983,17 +1004,20 @@ export function WinnerPicker() {
                               !rolling && i === WINNER_INDEX
                                 ? revealed?.[reelIndex]?.qualifiesActive === false
                                   ? "border-amber-400/60 bg-amber-400/10 text-amber-300"
-                                  : "border-emerald-400/60 bg-emerald-400/10 text-emerald-300"
+                                  : "border-[#ffd700]/60 bg-[#ffd700]/10 text-[#ffd700] shadow-[0_0_20px_rgba(255,215,0,0.35)]"
                                 : "border-white/10 bg-zinc-900/70 text-white/70"
                             }`}
                           >
-                            {i === WINNER_INDEX ? (
-                              <Avatar
-                                username={item.username}
-                                avatarUrl={item.avatarUrl}
-                                size={reels.length > 1 ? 22 : 30}
-                              />
-                            ) : null}
+                            <Avatar
+                              username={item.username}
+                              avatarUrl={item.avatarUrl}
+                              size={reels.length > 1 ? 22 : 30}
+                              gold={
+                                !rolling &&
+                                i === WINNER_INDEX &&
+                                revealed?.[reelIndex]?.qualifiesActive !== false
+                              }
+                            />
                             <span className="truncate">{item.username}</span>
                           </div>
                         ))}
