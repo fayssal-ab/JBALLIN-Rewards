@@ -261,9 +261,11 @@ export function WinnerPicker() {
         (e) => !wonUsernames.has(e.username) && (!subscribersOnly || e.isSubscriber)
       );
     }
-    return manualNames
-      .filter((n) => !wonUsernames.has(n))
-      .map((n) => ({ username: n, avatarUrl: null }));
+    // Unlike Kick mode, a past winner is NOT auto-excluded here — the
+    // wheel keeps showing everyone who was typed in until the admin
+    // removes them with the × button. Winning doesn't take you out of the
+    // pool for the next spin.
+    return manualNames.map((n) => ({ username: n, avatarUrl: null }));
   }, [mode, kickEntries, manualNames, wonUsernames, subscribersOnly]);
 
   // Search only narrows what's displayed — the draw pool stays `participants`.
@@ -508,6 +510,70 @@ export function WinnerPicker() {
     }, WHEEL_DURATION_MS + 100);
   }
 
+  // Shared between Kick mode's fixed reel overlay and the wheel's inline
+  // reveal slot — same card, two different places it can appear.
+  function renderReveal() {
+    if (!revealed) return null;
+    const failedCount = revealed.filter((w) => w.qualifiesActive === false).length;
+    return (
+      <div className="animate-glow-pulse relative mt-6 overflow-hidden rounded-2xl border-2 border-emerald-400/60 bg-gradient-to-b from-zinc-950 via-emerald-400/10 to-zinc-950 p-8 text-center shadow-[0_0_60px_rgba(52,211,153,0.35)]">
+        {confetti.map((c) => (
+          <span
+            key={c.id}
+            className="animate-confetti pointer-events-none absolute top-0 h-2 w-2"
+            style={{
+              left: `${c.left}%`,
+              animationDelay: `${c.delay}ms`,
+              backgroundColor: c.color,
+              transform: `rotate(${c.rotate}deg)`,
+            }}
+          />
+        ))}
+        <span className="animate-crown-bounce inline-block">
+          <Icon name="crown" className="h-10 w-10 text-emerald-300" />
+        </span>
+        <p className="mt-1 flex items-center justify-center gap-1.5 text-xs tracking-[0.3em] text-emerald-400/60 uppercase">
+          <Icon name="trophy" className="h-4 w-4" />
+          {revealed.length > 1 ? "Winners" : "Winner"}
+        </p>
+        <div className="relative z-10 mt-4 space-y-3">
+          {revealed.map((w) => (
+            <div key={w.username} className="flex flex-col items-center gap-1">
+              <div className="flex items-center justify-center gap-3">
+                <Avatar username={w.username} avatarUrl={w.avatarUrl} size={40} />
+                <span
+                  className={`font-display animate-winner-pop text-3xl uppercase sm:text-4xl ${
+                    w.qualifiesActive === false ? "text-white/40" : "text-white"
+                  }`}
+                >
+                  {w.username}
+                </span>
+              </div>
+              {w.qualifiesActive === false ? (
+                <p className="flex items-center gap-1 text-xs font-semibold text-amber-400">
+                  <Icon name="message" className="h-3 w-3" />
+                  Not active enough in chat — needs a reroll
+                </p>
+              ) : null}
+            </div>
+          ))}
+        </div>
+
+        {failedCount > 0 ? (
+          <button
+            type="button"
+            onClick={() => draw(failedCount)}
+            disabled={rolling || (mode === "kick" && kickBusy)}
+            className="relative z-10 mx-auto mt-5 flex items-center justify-center gap-1.5 rounded-lg border border-amber-400/40 px-4 py-2 text-xs font-bold text-amber-300 hover:bg-amber-400/10 disabled:opacity-40"
+          >
+            <Icon name="dice" className="h-3.5 w-3.5" />
+            Reroll {failedCount} Inactive
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="flex items-center gap-4">
@@ -702,8 +768,8 @@ export function WinnerPicker() {
                   </div>
                 </div>
                 <p className="text-xs text-white/40">
-                  Each spin draws one winner and removes them from the wheel — spin again for
-                  more.
+                  Each spin draws one winner — they stay on the wheel after winning. Remove
+                  someone yourself with the × next to their name.
                 </p>
               </form>
             )}
@@ -813,12 +879,18 @@ export function WinnerPicker() {
       </div>
 
       {mode === "manual" ? (
-        <div className="mt-6 max-w-sm">
+        <div className="mx-auto mt-6 max-w-md">
           <NamesWheel
             names={wheelNames}
             rotation={wheelRotation}
             spinning={wheelSpinning}
           />
+          {/* Reveal renders right under the wheel it belongs to — centered
+              as one unit with it — instead of the fixed viewport-centered
+              overlay Kick mode uses, which (once the sidebar's width is
+              accounted for) doesn't line up with where the wheel actually
+              sits in the page. */}
+          {renderReveal()}
         </div>
       ) : null}
 
@@ -855,9 +927,11 @@ export function WinnerPicker() {
       {/* Centered on screen so it's the obvious focal point when it fires —
           but NO backdrop dim/blur behind it. Everything else on the page
           stays fully visible; only this panel pops, on its own glow. Kick
-          mode shows the reel(s); manual mode's wheel already renders inline
-          above, so this only needs to carry the reveal card for that case. */}
-      {reels || (mode === "manual" && revealed) ? (
+          only — the wheel's reveal renders inline right under the wheel
+          instead (see above), since this fixed-viewport centering doesn't
+          actually line up with where the wheel sits once the sidebar's
+          width is factored in. */}
+      {reels ? (
         <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-6">
           <div className="pointer-events-auto relative w-full max-w-2xl">
             <div className="mb-2 flex items-center justify-between">
@@ -930,65 +1004,7 @@ export function WinnerPicker() {
               </div>
             ) : null}
 
-            {revealed ? (
-              <div className="animate-glow-pulse relative mt-6 overflow-hidden rounded-2xl border-2 border-emerald-400/60 bg-gradient-to-b from-zinc-950 via-emerald-400/10 to-zinc-950 p-8 text-center shadow-[0_0_60px_rgba(52,211,153,0.35)]">
-                {confetti.map((c) => (
-                  <span
-                    key={c.id}
-                    className="animate-confetti pointer-events-none absolute top-0 h-2 w-2"
-                    style={{
-                      left: `${c.left}%`,
-                      animationDelay: `${c.delay}ms`,
-                      backgroundColor: c.color,
-                      transform: `rotate(${c.rotate}deg)`,
-                    }}
-                  />
-                ))}
-                <span className="animate-crown-bounce inline-block">
-                  <Icon name="crown" className="h-10 w-10 text-emerald-300" />
-                </span>
-                <p className="mt-1 flex items-center justify-center gap-1.5 text-xs tracking-[0.3em] text-emerald-400/60 uppercase">
-                  <Icon name="trophy" className="h-4 w-4" />
-                  {revealed.length > 1 ? "Winners" : "Winner"}
-                </p>
-                <div className="relative z-10 mt-4 space-y-3">
-                  {revealed.map((w) => (
-                    <div key={w.username} className="flex flex-col items-center gap-1">
-                      <div className="flex items-center justify-center gap-3">
-                        <Avatar username={w.username} avatarUrl={w.avatarUrl} size={40} />
-                        <span
-                          className={`font-display animate-winner-pop text-3xl uppercase sm:text-4xl ${
-                            w.qualifiesActive === false ? "text-white/40" : "text-white"
-                          }`}
-                        >
-                          {w.username}
-                        </span>
-                      </div>
-                      {w.qualifiesActive === false ? (
-                        <p className="flex items-center gap-1 text-xs font-semibold text-amber-400">
-                          <Icon name="message" className="h-3 w-3" />
-                          Not active enough in chat — needs a reroll
-                        </p>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-
-                {revealed.some((w) => w.qualifiesActive === false) ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      draw(revealed.filter((w) => w.qualifiesActive === false).length)
-                    }
-                    disabled={rolling || (mode === "kick" && kickBusy)}
-                    className="relative z-10 mx-auto mt-5 flex items-center justify-center gap-1.5 rounded-lg border border-amber-400/40 px-4 py-2 text-xs font-bold text-amber-300 hover:bg-amber-400/10 disabled:opacity-40"
-                  >
-                    <Icon name="dice" className="h-3.5 w-3.5" />
-                    Reroll {revealed.filter((w) => w.qualifiesActive === false).length} Inactive
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
+            {renderReveal()}
           </div>
         </div>
       ) : null}
