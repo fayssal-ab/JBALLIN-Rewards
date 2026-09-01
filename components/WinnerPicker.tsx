@@ -18,7 +18,8 @@ const WHEEL_DURATION_MS = 4500;
 const WHEEL_EXTRA_SPINS = 6;
 // Deliberately varied hues, not shades of one color — a wheel where every
 // wedge is basically the same green reads as a flat blob, not a wheel.
-const WHEEL_COLORS = ["#10b981", "#7c3aed", "#f59e0b", "#ef4444", "#06b6d4", "#ec4899"];
+// Kept dark/deep rather than bright neon, to match the site's dark theme.
+const WHEEL_COLORS = ["#065f46", "#4c1d95", "#78350f", "#7f1d1d", "#155e75", "#831843"];
 
 const CONFETTI_COLORS = ["#ffd700", "#ffffff", "#fbbf24"];
 const CONFETTI_COUNT = 28;
