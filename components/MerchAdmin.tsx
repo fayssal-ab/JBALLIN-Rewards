@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { MerchItem } from "@/lib/merch";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -21,6 +22,7 @@ const EMPTY_FORM = { name: "", price: "", image_url: "", buy_url: "" };
 
 function ItemRow({ item }: { item: MerchItem }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     name: item.name,
@@ -46,7 +48,7 @@ function ItemRow({ item }: { item: MerchItem }) {
   }
 
   async function remove() {
-    if (!confirm(`Delete "${item.name}"?`)) return;
+    if (!(await confirm(`Delete "${item.name}"?`, { danger: true }))) return;
     setBusy(true);
     await callApi({ action: "delete", id: item.id });
     setBusy(false);

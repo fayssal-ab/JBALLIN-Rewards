@@ -25,10 +25,15 @@
     color-scheme: dark;
   }
 
+  /* overflow-x: clip, not hidden — hidden forces overflow-y into a scroll
+     container too (the CSS overflow pairing rule), which silently breaks
+     position: sticky for every descendant on the page (e.g. the admin
+     sidebar). clip blocks the same horizontal overflow without creating a
+     scrollable box. */
   html,
   body {
     max-width: 100vw;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   body {

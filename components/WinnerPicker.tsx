@@ -4,9 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Icon } from "@/components/Icon";
 import { SocialIcon } from "@/components/SocialIcon";
+import { useConfirm } from "@/components/ConfirmDialog";
 
-const ITEM_WIDTH = 128; // px — must match the w-32 class on each reel card
-const ITEM_GAP = 8; // px — matches gap-2
+const ITEM_WIDTH = 160; // px — must match the w-40 class on each reel card
+const ITEM_GAP = 10; // px — matches gap-2.5
 const STEP = ITEM_WIDTH + ITEM_GAP;
 const REEL_LENGTH = 36;
 const WINNER_INDEX = 28; // leaves a few cards after it so the strip doesn't look like it "ran out"
@@ -15,17 +16,24 @@ const ROLL_DURATION_MS = 4000;
 const CONFETTI_COLORS = ["#34d399", "#ffffff", "#fbbf24"];
 const CONFETTI_COUNT = 28;
 
+// A Kick-sourced entrant who sent this many chat messages while the
+// giveaway was live (not just their entry line) is flagged "Active" —
+// a quick signal for whether a winner was genuinely engaged in chat.
+const ACTIVE_MESSAGE_THRESHOLD = 3;
+
 type Mode = "manual" | "kick";
 
 interface Participant {
   username: string;
   avatarUrl: string | null;
   isSubscriber?: boolean;
+  messageCount?: number;
 }
 
 interface Winner {
   username: string;
   avatarUrl: string | null;
+  messageCount?: number;
 }
 
 interface GiveawayApiState {
@@ -45,7 +53,7 @@ interface GiveawayApiState {
 function Avatar({
   username,
   avatarUrl,
-  size = 28,
+  size = 32,
 }: {
   username: string;
   avatarUrl: string | null;
@@ -66,14 +74,32 @@ function Avatar({
   return (
     <div
       style={{ width: size, height: size }}
-      className="flex shrink-0 items-center justify-center rounded-full bg-emerald-400/10 text-[10px] font-bold text-emerald-300"
+      className="flex shrink-0 items-center justify-center rounded-full bg-emerald-400/10 text-xs font-bold text-emerald-300"
     >
       {username.slice(0, 2).toUpperCase()}
     </div>
   );
 }
 
+// Kick-mode only — manual entries have no message history to show.
+function ActivityBadge({ messageCount }: { messageCount: number }) {
+  const active = messageCount >= ACTIVE_MESSAGE_THRESHOLD;
+  return (
+    <span
+      className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+        active ? "bg-emerald-400/10 text-emerald-300" : "bg-white/5 text-white/40"
+      }`}
+      title={`${messageCount} message${messageCount === 1 ? "" : "s"} sent`}
+    >
+      <Icon name="message" className="h-2.5 w-2.5" />
+      {messageCount}
+      {active ? <span className="ml-0.5">Active</span> : null}
+    </span>
+  );
+}
+
 export function WinnerPicker() {
+  const confirm = useConfirm();
   const [mode, setMode] = useState<Mode>("manual");
 
   // Manual mode: typed names, no avatars, winners tracked only in this tab.
@@ -182,7 +208,7 @@ export function WinnerPicker() {
   }
 
   async function resetAll() {
-    if (!confirm("Reset everything? This clears participants and winners.")) return;
+    if (!(await confirm("Reset everything? This clears participants and winners.", { danger: true }))) return;
     if (mode === "kick") {
       setKickBusy(true);
       await fetch("/api/admin/giveaway", {
@@ -362,10 +388,10 @@ export function WinnerPicker() {
       </div>
 
       {/* Settings | Participants | Winners */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+      <div className="mt-4 grid gap-5 lg:grid-cols-3">
         {/* Settings */}
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/40">
-          <div className="flex items-center gap-2 border-b border-white/5 px-4 py-3">
+          <div className="flex items-center gap-2 border-b border-white/5 px-5 py-4">
             <Icon name="bolt" className="h-4 w-4 text-white/50" />
             <span className="text-xs font-bold tracking-wide text-white/70 uppercase">
               Settings
@@ -381,7 +407,7 @@ export function WinnerPicker() {
             ) : null}
           </div>
 
-          <div className="space-y-3 p-4">
+          <div className="space-y-4 p-5">
             {mode === "kick" ? (
               <>
                 <div>
@@ -509,7 +535,7 @@ export function WinnerPicker() {
 
         {/* Participants */}
         <div className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/40">
-          <div className="flex items-center gap-2 border-b border-white/5 px-4 py-3">
+          <div className="flex items-center gap-2 border-b border-white/5 px-5 py-4">
             <Icon name="users" className="h-4 w-4 text-white/50" />
             <span className="text-xs font-bold tracking-wide text-white/70 uppercase">
               Participants
@@ -518,9 +544,9 @@ export function WinnerPicker() {
               {participants.length}
             </span>
           </div>
-          <div className="max-h-80 flex-1 space-y-1.5 overflow-y-auto p-3">
+          <div className="max-h-[28rem] flex-1 space-y-2 overflow-y-auto p-4">
             {participants.length === 0 ? (
-              <p className="p-2 text-xs text-white/30">
+              <p className="p-2 text-sm text-white/30">
                 {mode === "kick"
                   ? "Waiting for entries…"
                   : "No participants yet — add names on the left."}
@@ -529,20 +555,23 @@ export function WinnerPicker() {
               participants.map((p) => (
                 <div
                   key={p.username}
-                  className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-2"
+                  className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] px-3.5 py-2.5"
                 >
-                  <Avatar username={p.username} avatarUrl={p.avatarUrl} size={24} />
+                  <Avatar username={p.username} avatarUrl={p.avatarUrl} size={32} />
                   <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">
                     {p.username}
                   </span>
+                  {mode === "kick" ? (
+                    <ActivityBadge messageCount={p.messageCount ?? 0} />
+                  ) : null}
                   {mode === "manual" ? (
                     <button
                       type="button"
                       onClick={() => removeParticipant(p.username)}
                       aria-label={`Remove ${p.username}`}
-                      className="shrink-0 rounded-full p-0.5 text-white/30 hover:bg-red-400/10 hover:text-red-300"
+                      className="shrink-0 rounded-full p-1 text-white/30 hover:bg-red-400/10 hover:text-red-300"
                     >
-                      <Icon name="close" className="h-3 w-3" />
+                      <Icon name="close" className="h-3.5 w-3.5" />
                     </button>
                   ) : null}
                 </div>
@@ -553,7 +582,7 @@ export function WinnerPicker() {
 
         {/* Winners */}
         <div className="flex flex-col overflow-hidden rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-400/[0.05] to-transparent">
-          <div className="flex items-center gap-2 border-b border-white/5 px-4 py-3">
+          <div className="flex items-center gap-2 border-b border-white/5 px-5 py-4">
             <Icon name="trophy" className="h-4 w-4 text-emerald-300" />
             <span className="text-xs font-bold tracking-wide text-white/70 uppercase">
               Winners
@@ -562,22 +591,25 @@ export function WinnerPicker() {
               {winners.length}
             </span>
           </div>
-          <div className="max-h-80 flex-1 space-y-1.5 overflow-y-auto p-3">
+          <div className="max-h-[28rem] flex-1 space-y-2 overflow-y-auto p-4">
             {winners.length === 0 ? (
-              <p className="p-2 text-xs text-white/30">
+              <p className="p-2 text-sm text-white/30">
                 Nobody drawn yet — click Draw Winner below.
               </p>
             ) : (
               winners.map((w, i) => (
                 <div
                   key={`${w.username}-${i}`}
-                  className="flex items-center gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/5 px-2.5 py-2"
+                  className="flex items-center gap-3 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3.5 py-2.5"
                 >
-                  <Avatar username={w.username} avatarUrl={w.avatarUrl} size={24} />
+                  <Avatar username={w.username} avatarUrl={w.avatarUrl} size={32} />
                   <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">
                     {w.username}
                   </span>
-                  <Icon name="crown" className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
+                  {mode === "kick" ? (
+                    <ActivityBadge messageCount={w.messageCount ?? 0} />
+                  ) : null}
+                  <Icon name="crown" className="h-4 w-4 shrink-0 text-emerald-300" />
                 </div>
               ))
             )}
@@ -614,7 +646,7 @@ export function WinnerPicker() {
             if (e.target === e.currentTarget) closeRollOverlay();
           }}
         >
-          <div className="relative w-full max-w-md">
+          <div className="relative w-full max-w-2xl">
             <button
               type="button"
               onClick={closeRollOverlay}
@@ -626,12 +658,12 @@ export function WinnerPicker() {
 
             <div
               ref={viewportRef}
-              className="relative h-24 overflow-hidden rounded-2xl border border-emerald-400/30 bg-zinc-900/80 shadow-[0_0_40px_rgba(52,211,153,0.15)]"
+              className="relative h-32 overflow-hidden rounded-2xl border border-emerald-400/30 bg-zinc-900/80 shadow-[0_0_40px_rgba(52,211,153,0.15)]"
             >
               <div className="pointer-events-none absolute inset-y-0 left-1/2 z-10 w-0.5 -translate-x-1/2 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
               <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-full bg-gradient-to-r from-zinc-950 via-transparent to-zinc-950" />
               <div
-                className="flex h-full items-center gap-2 px-2 transition-transform ease-out"
+                className="flex h-full items-center gap-2.5 px-2 transition-transform ease-out"
                 style={{
                   transform: `translateX(${-offset}px)`,
                   transitionDuration: instant ? "0ms" : `${ROLL_DURATION_MS}ms`,
@@ -641,7 +673,7 @@ export function WinnerPicker() {
                   <div
                     key={i}
                     style={{ width: ITEM_WIDTH }}
-                    className={`flex h-16 shrink-0 items-center justify-center rounded-xl border px-2 text-center text-sm font-semibold ${
+                    className={`flex h-24 shrink-0 items-center justify-center rounded-xl border px-3 text-center text-base font-semibold ${
                       !rolling && i === WINNER_INDEX
                         ? "border-emerald-400/60 bg-emerald-400/10 text-emerald-300"
                         : "border-white/10 bg-zinc-900/70 text-white/70"
@@ -654,7 +686,7 @@ export function WinnerPicker() {
             </div>
 
             {revealed ? (
-              <div className="animate-glow-pulse relative mt-6 overflow-hidden rounded-2xl border border-emerald-400/50 bg-gradient-to-b from-emerald-400/10 to-emerald-400/5 p-6 text-center">
+              <div className="animate-glow-pulse relative mt-6 overflow-hidden rounded-2xl border border-emerald-400/50 bg-gradient-to-b from-emerald-400/10 to-emerald-400/5 p-8 text-center">
                 {confetti.map((c) => (
                   <span
                     key={c.id}
@@ -668,20 +700,20 @@ export function WinnerPicker() {
                   />
                 ))}
                 <span className="animate-crown-bounce inline-block">
-                  <Icon name="crown" className="h-8 w-8 text-emerald-300" />
+                  <Icon name="crown" className="h-10 w-10 text-emerald-300" />
                 </span>
-                <p className="mt-1 flex items-center justify-center gap-1.5 text-[10px] tracking-[0.3em] text-emerald-400/60 uppercase">
-                  <Icon name="trophy" className="h-3.5 w-3.5" />
+                <p className="mt-1 flex items-center justify-center gap-1.5 text-xs tracking-[0.3em] text-emerald-400/60 uppercase">
+                  <Icon name="trophy" className="h-4 w-4" />
                   {revealed.length > 1 ? "Winners" : "Winner"}
                 </p>
-                <div className="relative z-10 mt-3 space-y-2">
+                <div className="relative z-10 mt-4 space-y-3">
                   {revealed.map((w) => (
                     <div
                       key={w.username}
-                      className="flex items-center justify-center gap-2"
+                      className="flex items-center justify-center gap-3"
                     >
-                      <Avatar username={w.username} avatarUrl={w.avatarUrl} size={28} />
-                      <span className="font-display animate-winner-pop text-2xl uppercase text-white sm:text-3xl">
+                      <Avatar username={w.username} avatarUrl={w.avatarUrl} size={40} />
+                      <span className="font-display animate-winner-pop text-3xl uppercase text-white sm:text-4xl">
                         {w.username}
                       </span>
                     </div>

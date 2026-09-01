@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { TournamentSlots, Round } from "@/lib/tournament";
 import { Icon } from "@/components/Icon";
 import { ChampionBadge } from "@/components/ChampionBadge";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -141,6 +142,7 @@ export function TournamentBoard({
   prize: string;
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [prizeInput, setPrizeInput] = useState(prize);
   const [busy, setBusy] = useState(false);
 
@@ -166,7 +168,7 @@ export function TournamentBoard({
   }
 
   async function resetBracket() {
-    if (!confirm("Reset the whole bracket?")) return;
+    if (!(await confirm("Reset the whole bracket?", { danger: true }))) return;
     await callApi({ action: "reset" });
     router.refresh();
   }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { BonusHuntEntry } from "@/lib/bonusHunt";
 import type { SlotSuggestion } from "@/lib/slotSearch";
 import { Icon } from "@/components/Icon";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -129,6 +130,7 @@ export function BonusHuntBoard({
   initialPrediction: PredictionState;
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ slotName: "", provider: "", imageUrl: "", bet: "" });
   const [balanceInput, setBalanceInput] = useState(startingBalance);
@@ -235,7 +237,7 @@ export function BonusHuntBoard({
   }
 
   async function resetHunt() {
-    if (!confirm("Reset the whole bonus hunt? This deletes every entry.")) return;
+    if (!(await confirm("Reset the whole bonus hunt? This deletes every entry.", { danger: true }))) return;
     setBusy(true);
     await callApi({ action: "reset" });
     await refresh();
@@ -371,8 +373,8 @@ export function BonusHuntBoard({
               </button>
               {prediction.guessCount > 0 ? (
                 <button
-                  onClick={() => {
-                    if (confirm("Clear every guess collected so far?")) {
+                  onClick={async () => {
+                    if (await confirm("Clear every guess collected so far?", { danger: true })) {
                       callPredictionApi({ action: "clear" });
                     }
                   }}

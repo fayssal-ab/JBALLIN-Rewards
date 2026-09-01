@@ -3,6 +3,7 @@ import { Bangers, Righteous, Inter } from "next/font/google";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
 import "./globals.css";
 
 // Bold, energetic comic-style display face — replaces Anton everywhere
@@ -73,7 +74,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="relative font-sans">
         <AnimatedBackground />
         <SiteHeader />
-        <main>{children}</main>
+        <ConfirmProvider>
+          <main>{children}</main>
+        </ConfirmProvider>
         <SiteFooter />
       </body>
     </html>

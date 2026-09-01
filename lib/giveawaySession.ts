@@ -15,11 +15,13 @@ export interface GiveawayEntry {
   username: string;
   avatarUrl: string | null;
   isSubscriber: boolean;
+  messageCount: number;
 }
 
 export interface GiveawayWinner {
   username: string;
   avatarUrl: string | null;
+  messageCount: number;
 }
 
 export async function getGiveawaySession(): Promise<GiveawaySession> {
@@ -44,22 +46,24 @@ export async function markWebhookConnected(): Promise<void> {
 
 export async function getGiveawayEntries(): Promise<GiveawayEntry[]> {
   const [rows] = await getPool().query<RowDataPacket[]>(
-    "SELECT username, avatar_url, is_subscriber FROM giveaway_entries ORDER BY created_at ASC"
+    "SELECT username, avatar_url, is_subscriber, message_count FROM giveaway_entries ORDER BY created_at ASC"
   );
   return rows.map((row) => ({
     username: row.username as string,
     avatarUrl: (row.avatar_url as string | null) ?? null,
     isSubscriber: Boolean(row.is_subscriber),
+    messageCount: row.message_count as number,
   }));
 }
 
 export async function getGiveawayWinners(): Promise<GiveawayWinner[]> {
   const [rows] = await getPool().query<RowDataPacket[]>(
-    "SELECT username, avatar_url FROM giveaway_winners ORDER BY won_at ASC"
+    "SELECT username, avatar_url, message_count FROM giveaway_winners ORDER BY won_at ASC"
   );
   return rows.map((row) => ({
     username: row.username as string,
     avatarUrl: (row.avatar_url as string | null) ?? null,
+    messageCount: row.message_count as number,
   }));
 }
 
@@ -105,13 +109,14 @@ export async function drawGiveawayWinners(
 ): Promise<GiveawayWinner[]> {
   const pool = getPool();
   const [rows] = await pool.query<RowDataPacket[]>(
-    `SELECT e.username, e.avatar_url FROM giveaway_entries e
+    `SELECT e.username, e.avatar_url, e.message_count FROM giveaway_entries e
      WHERE e.username NOT IN (SELECT username FROM giveaway_winners)
        ${subscribersOnly ? "AND e.is_subscriber = 1" : ""}`
   );
   const candidates: GiveawayWinner[] = rows.map((r) => ({
     username: r.username as string,
     avatarUrl: (r.avatar_url as string | null) ?? null,
+    messageCount: r.message_count as number,
   }));
 
   for (let i = candidates.length - 1; i > 0; i--) {
@@ -121,8 +126,8 @@ export async function drawGiveawayWinners(
   const picked = candidates.slice(0, count);
 
   if (picked.length > 0) {
-    await pool.query("INSERT INTO giveaway_winners (username, avatar_url) VALUES ?", [
-      picked.map((p) => [p.username, p.avatarUrl]),
+    await pool.query("INSERT INTO giveaway_winners (username, avatar_url, message_count) VALUES ?", [
+      picked.map((p) => [p.username, p.avatarUrl, p.messageCount]),
     ]);
   }
   return picked;
@@ -131,7 +136,13 @@ export async function drawGiveawayWinners(
 // Called from the webhook handler for every chat message. Never throws —
 // a non-2xx response makes Kick retry the delivery, and a bad message
 // shouldn't be able to wedge the webhook. Silently no-ops when there's no
-// active session or the message doesn't match the keyword.
+// active session.
+//
+// Every message from an already-entered user bumps message_count, whether
+// or not it matches the keyword — this is what lets the admin see how
+// engaged a winner actually was, not just that they typed the entry line
+// once. A message that itself matches the keyword either creates the entry
+// (starting count at 1) or, for a repeat entrant, still counts as activity.
 export async function recordGiveawayEntryIfMatches(
   username: string,
   content: string,
@@ -143,11 +154,18 @@ export async function recordGiveawayEntryIfMatches(
 
   const normalized = content.trim().toLowerCase();
   const keyword = session.keyword.trim().toLowerCase();
-  if (!keyword || !normalized.startsWith(keyword)) return;
+  const matchesKeyword = Boolean(keyword) && normalized.startsWith(keyword);
 
-  await getPool().query(
-    `INSERT INTO giveaway_entries (username, avatar_url, is_subscriber) VALUES (?, ?, ?)
-     ON DUPLICATE KEY UPDATE avatar_url = VALUES(avatar_url), is_subscriber = VALUES(is_subscriber)`,
-    [username, avatarUrl, isSubscriber ? 1 : 0]
-  );
+  if (matchesKeyword) {
+    await getPool().query(
+      `INSERT INTO giveaway_entries (username, avatar_url, is_subscriber, message_count) VALUES (?, ?, ?, 1)
+       ON DUPLICATE KEY UPDATE avatar_url = VALUES(avatar_url), is_subscriber = VALUES(is_subscriber), message_count = message_count + 1`,
+      [username, avatarUrl, isSubscriber ? 1 : 0]
+    );
+  } else {
+    await getPool().query(
+      "UPDATE giveaway_entries SET message_count = message_count + 1, avatar_url = ? WHERE username = ?",
+      [avatarUrl, username]
+    );
+  }
 }
