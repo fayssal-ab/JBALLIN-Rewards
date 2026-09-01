@@ -73,6 +73,13 @@
   label {
     cursor: url("/curseur/gloves.png") 25 1, pointer;
   }
+
+  /* The custom cursor's big hand makes it hard to see/hit a number input's
+     tiny native up/down spin buttons — fall back to the normal system
+     cursor there so incrementing actually feels precise. */
+  input[type="number"] {
+    cursor: auto;
+  }
 }
 
 @keyframes shimmer {

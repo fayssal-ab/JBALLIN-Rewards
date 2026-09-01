@@ -44,7 +44,7 @@ export async function getGiveawaySession(): Promise<GiveawaySession> {
   const row = rows[0];
   return {
     active: Boolean(row?.active),
-    keyword: (row?.keyword as string | undefined) ?? "!giveaway",
+    keyword: (row?.keyword as string | undefined) ?? "jballin",
     winnerCount: (row?.winner_count as number | undefined) ?? 1,
     subscribersOnly: Boolean(row?.subscribers_only),
     activeOnly: Boolean(row?.active_only),
