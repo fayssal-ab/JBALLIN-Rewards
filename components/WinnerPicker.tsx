@@ -906,12 +906,6 @@ export function WinnerPicker() {
             rotation={wheelRotation}
             spinning={wheelSpinning}
           />
-          {/* Reveal renders right under the wheel it belongs to — centered
-              as one unit with it — instead of the fixed viewport-centered
-              overlay Kick mode uses, which (once the sidebar's width is
-              accounted for) doesn't line up with where the wheel actually
-              sits in the page. */}
-          {renderReveal()}
         </div>
       ) : null}
 
@@ -947,12 +941,14 @@ export function WinnerPicker() {
 
       {/* Centered on screen so it's the obvious focal point when it fires —
           but NO backdrop dim/blur behind it. Everything else on the page
-          stays fully visible; only this panel pops, on its own glow. Kick
-          only — the wheel's reveal renders inline right under the wheel
-          instead (see above), since this fixed-viewport centering doesn't
-          actually line up with where the wheel sits once the sidebar's
-          width is factored in. */}
-      {reels ? (
+          stays fully visible; only this panel pops, on its own glow. A
+          real popup rather than inline content on purpose: as more admin
+          tools/sections get added to the page, an inline reveal would end
+          up wherever the wheel happens to sit and need scrolling to find —
+          this one is always in view regardless of scroll position or page
+          length. The wheel itself still spins in place inline; only the
+          reveal (once it lands) pops up here for both modes. */}
+      {reels || (mode === "manual" && revealed) ? (
         <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-6">
           <div className="pointer-events-auto relative w-full max-w-2xl">
             <div className="mb-2 flex items-center justify-between">
