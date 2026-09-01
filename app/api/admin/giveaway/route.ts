@@ -15,7 +15,7 @@ import { getBroadcasterUserId, subscribeToChatMessages } from "@/lib/kick";
 import { KICK_CHANNEL } from "@/lib/constants";
 
 type Body =
-  | { action: "start"; keyword: string; winnerCount: number; subscribersOnly: boolean }
+  | { action: "start"; keyword: string; winnerCount: number; subscribersOnly: boolean; activeOnly: boolean }
   | { action: "stop" }
   | { action: "reset" }
   | { action: "draw" };
@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
         keyword: body.keyword.trim(),
         winnerCount: Math.max(1, Math.floor(body.winnerCount) || 1),
         subscribersOnly: Boolean(body.subscribersOnly),
+        activeOnly: Boolean(body.activeOnly),
       });
       return NextResponse.json({ ok: true, connectWarning });
     }
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
       break;
     case "draw": {
       const session = await getGiveawaySession();
-      const winners = await drawGiveawayWinners(session.winnerCount, session.subscribersOnly);
+      const winners = await drawGiveawayWinners(session.winnerCount, session.subscribersOnly, session.activeOnly);
       return NextResponse.json({ ok: true, winners });
     }
     default:

@@ -1,12 +1,14 @@
 import "server-only";
 import type { RowDataPacket } from "mysql2";
 import { getPool } from "./db";
+import { ACTIVE_MESSAGE_THRESHOLD } from "./giveawayConstants";
 
 export interface GiveawaySession {
   active: boolean;
   keyword: string;
   winnerCount: number;
   subscribersOnly: boolean;
+  activeOnly: boolean;
   webhookConnected: boolean;
   started_at: string | null;
 }
@@ -26,7 +28,7 @@ export interface GiveawayWinner {
 
 export async function getGiveawaySession(): Promise<GiveawaySession> {
   const [rows] = await getPool().query<RowDataPacket[]>(
-    `SELECT active, keyword, winner_count, subscribers_only, webhook_connected, started_at
+    `SELECT active, keyword, winner_count, subscribers_only, active_only, webhook_connected, started_at
      FROM giveaway_session WHERE id = 1`
   );
   const row = rows[0];
@@ -35,6 +37,7 @@ export async function getGiveawaySession(): Promise<GiveawaySession> {
     keyword: (row?.keyword as string | undefined) ?? "!giveaway",
     winnerCount: (row?.winner_count as number | undefined) ?? 1,
     subscribersOnly: Boolean(row?.subscribers_only),
+    activeOnly: Boolean(row?.active_only),
     webhookConnected: Boolean(row?.webhook_connected),
     started_at: (row?.started_at as string | undefined) ?? null,
   };
@@ -73,15 +76,16 @@ export async function startGiveawaySession(opts: {
   keyword: string;
   winnerCount: number;
   subscribersOnly: boolean;
+  activeOnly: boolean;
 }): Promise<void> {
   const pool = getPool();
   await pool.query("DELETE FROM giveaway_entries");
   await pool.query("DELETE FROM giveaway_winners");
   await pool.query(
     `UPDATE giveaway_session
-     SET active = 1, keyword = ?, winner_count = ?, subscribers_only = ?, started_at = CURRENT_TIMESTAMP
+     SET active = 1, keyword = ?, winner_count = ?, subscribers_only = ?, active_only = ?, started_at = CURRENT_TIMESTAMP
      WHERE id = 1`,
-    [opts.keyword, opts.winnerCount, opts.subscribersOnly ? 1 : 0]
+    [opts.keyword, opts.winnerCount, opts.subscribersOnly ? 1 : 0, opts.activeOnly ? 1 : 0]
   );
 }
 
@@ -99,19 +103,22 @@ export async function resetGiveawayState(): Promise<void> {
 }
 
 // Random, non-repeating draw: picks up to `count` entries that haven't
-// already won this session (optionally restricted to subscribers) and
-// records them in giveaway_winners. Shuffled in JS, not SQL ORDER BY RAND()
-// — fine at this scale (a chat giveaway's entrant count, not a table scan)
-// and keeps the randomness source obvious.
+// already won this session (optionally restricted to subscribers and/or to
+// entrants who cleared the chat-activity threshold) and records them in
+// giveaway_winners. Shuffled in JS, not SQL ORDER BY RAND() — fine at this
+// scale (a chat giveaway's entrant count, not a table scan) and keeps the
+// randomness source obvious.
 export async function drawGiveawayWinners(
   count: number,
-  subscribersOnly: boolean
+  subscribersOnly: boolean,
+  activeOnly: boolean
 ): Promise<GiveawayWinner[]> {
   const pool = getPool();
   const [rows] = await pool.query<RowDataPacket[]>(
     `SELECT e.username, e.avatar_url, e.message_count FROM giveaway_entries e
      WHERE e.username NOT IN (SELECT username FROM giveaway_winners)
-       ${subscribersOnly ? "AND e.is_subscriber = 1" : ""}`
+       ${subscribersOnly ? "AND e.is_subscriber = 1" : ""}
+       ${activeOnly ? `AND e.message_count >= ${ACTIVE_MESSAGE_THRESHOLD}` : ""}`
   );
   const candidates: GiveawayWinner[] = rows.map((r) => ({
     username: r.username as string,

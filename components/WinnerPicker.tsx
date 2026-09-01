@@ -5,6 +5,7 @@ import { flushSync } from "react-dom";
 import { Icon } from "@/components/Icon";
 import { SocialIcon } from "@/components/SocialIcon";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { ACTIVE_MESSAGE_THRESHOLD } from "@/lib/giveawayConstants";
 
 const ITEM_WIDTH = 160; // px — must match the w-40 class on each reel card
 const ITEM_GAP = 10; // px — matches gap-2.5
@@ -15,11 +16,6 @@ const ROLL_DURATION_MS = 4000;
 
 const CONFETTI_COLORS = ["#34d399", "#ffffff", "#fbbf24"];
 const CONFETTI_COUNT = 28;
-
-// A Kick-sourced entrant who sent this many chat messages while the
-// giveaway was live (not just their entry line) is flagged "Active" —
-// a quick signal for whether a winner was genuinely engaged in chat.
-const ACTIVE_MESSAGE_THRESHOLD = 3;
 
 type Mode = "manual" | "kick";
 
@@ -36,12 +32,21 @@ interface Winner {
   messageCount?: number;
 }
 
+// One reel strip per winner being drawn — only the landing card (index
+// WINNER_INDEX) carries a real avatar; filler cards stay text-only so a
+// 5-winner draw doesn't fire off 150+ avatar image requests at once.
+interface ReelItem {
+  username: string;
+  avatarUrl: string | null;
+}
+
 interface GiveawayApiState {
   session: {
     active: boolean;
     keyword: string;
     winnerCount: number;
     subscribersOnly: boolean;
+    activeOnly: boolean;
     started_at: string | null;
   };
   entries: Participant[];
@@ -111,6 +116,7 @@ export function WinnerPicker() {
   const [keyword, setKeyword] = useState("!giveaway");
   const [winnerCountInput, setWinnerCountInput] = useState("1");
   const [subscribersOnly, setSubscribersOnly] = useState(false);
+  const [activeOnly, setActiveOnly] = useState(false);
   const [sessionActive, setSessionActive] = useState(false);
   const [kickEntries, setKickEntries] = useState<Participant[]>([]);
   const [kickWinners, setKickWinners] = useState<Winner[]>([]);
@@ -118,8 +124,9 @@ export function WinnerPicker() {
   const [connectWarning, setConnectWarning] = useState<string | null>(null);
 
   // Roll animation — mode-agnostic, drives off whatever draw() feeds it.
+  // One strip per winner being drawn (see ReelItem above).
   const [rolling, setRolling] = useState(false);
-  const [reel, setReel] = useState<string[] | null>(null);
+  const [reels, setReels] = useState<ReelItem[][] | null>(null);
   const [revealed, setRevealed] = useState<Winner[] | null>(null);
   const [offset, setOffset] = useState(0);
   const [instant, setInstant] = useState(false);
@@ -145,6 +152,7 @@ export function WinnerPicker() {
       setKeyword(data.session.keyword);
       setWinnerCountInput(String(data.session.winnerCount));
       setSubscribersOnly(data.session.subscribersOnly);
+      setActiveOnly(data.session.activeOnly);
     }
     setKickEntries(data.entries);
     setKickWinners(data.winners);
@@ -166,13 +174,16 @@ export function WinnerPicker() {
   const participants: Participant[] = useMemo(() => {
     if (mode === "kick") {
       return kickEntries.filter(
-        (e) => !wonUsernames.has(e.username) && (!subscribersOnly || e.isSubscriber)
+        (e) =>
+          !wonUsernames.has(e.username) &&
+          (!subscribersOnly || e.isSubscriber) &&
+          (!activeOnly || (e.messageCount ?? 0) >= ACTIVE_MESSAGE_THRESHOLD)
       );
     }
     return manualNames
       .filter((n) => !wonUsernames.has(n))
       .map((n) => ({ username: n, avatarUrl: null }));
-  }, [mode, kickEntries, manualNames, wonUsernames, subscribersOnly]);
+  }, [mode, kickEntries, manualNames, wonUsernames, subscribersOnly, activeOnly]);
 
   // Auto-connects the Kick webhook on the server the first time this is
   // called (see the "start" action) — no separate setup step to click.
@@ -188,6 +199,7 @@ export function WinnerPicker() {
         keyword: keyword.trim(),
         winnerCount,
         subscribersOnly,
+        activeOnly,
       }),
     });
     const data = await res.json().catch(() => null);
@@ -222,7 +234,7 @@ export function WinnerPicker() {
       setManualNames([]);
       setManualWinners([]);
     }
-    setReel(null);
+    setReels(null);
     setRevealed(null);
   }
 
@@ -252,17 +264,25 @@ export function WinnerPicker() {
   );
 
   function closeRollOverlay() {
-    setReel(null);
+    setReels(null);
     setRevealed(null);
   }
 
-  // Spins the reel landing on `landing`, then reveals the full `picked`
-  // set at once — one dramatic spin per draw regardless of winner count,
-  // since animating N sequential spins for N winners gets slow fast.
-  function runReelAnimation(pool: string[], landing: string, picked: Winner[]) {
-    const strip = Array.from({ length: REEL_LENGTH }, (_, i) =>
-      i === WINNER_INDEX ? landing : pool[Math.floor(Math.random() * pool.length)]
-    );
+  function buildStrip(pool: Participant[], landing: Winner): ReelItem[] {
+    return Array.from({ length: REEL_LENGTH }, (_, i) => {
+      if (i === WINNER_INDEX) return { username: landing.username, avatarUrl: landing.avatarUrl };
+      const p = pool[Math.floor(Math.random() * pool.length)];
+      return { username: p.username, avatarUrl: null };
+    });
+  }
+
+  // One reel per winner, all spinning at once — a 5-winner draw shows 5
+  // reels landing together, not one reel followed by a text dump. Every
+  // reel shares the same offset/instant/rolling state since they're all
+  // the same width and run on the same timer; only their strip contents
+  // differ (see buildStrip).
+  function runReelAnimation(pool: Participant[], picked: Winner[]) {
+    const strips = picked.map((w) => buildStrip(pool, w));
 
     if (finishTimer.current) clearTimeout(finishTimer.current);
 
@@ -282,7 +302,7 @@ export function WinnerPicker() {
     // actually landing a real paint between the two writes.
     flushSync(() => {
       setRevealed(null);
-      setReel(strip);
+      setReels(strips);
       setRolling(true);
       setInstant(true);
       setOffset(0);
@@ -318,11 +338,7 @@ export function WinnerPicker() {
       const picked: Winner[] = data?.winners ?? [];
       if (picked.length === 0) return;
       setKickWinners((w) => [...w, ...picked]);
-      runReelAnimation(
-        participants.map((p) => p.username),
-        picked[0].username,
-        picked
-      );
+      runReelAnimation(participants, picked);
     } else {
       const shuffled = [...participants].sort(() => Math.random() - 0.5);
       const picked = shuffled.slice(0, Math.min(winnerCount, shuffled.length)).map((p) => ({
@@ -331,11 +347,7 @@ export function WinnerPicker() {
       }));
       if (picked.length === 0) return;
       setManualWinners((w) => [...w, ...picked]);
-      runReelAnimation(
-        participants.map((p) => p.username),
-        picked[0].username,
-        picked
-      );
+      runReelAnimation(participants, picked);
     }
   }
 
@@ -354,11 +366,6 @@ export function WinnerPicker() {
           </h1>
         </div>
       </div>
-      <p className="mt-3 max-w-lg text-sm text-white/60">
-        Add names by hand, or collect them live from Kick chat, then draw one
-        or more winners at once.
-      </p>
-
       {/* Mode tabs */}
       <div className="mt-6 flex w-fit gap-1 rounded-xl border border-white/10 bg-zinc-900/60 p-1">
         <button
@@ -441,6 +448,24 @@ export function WinnerPicker() {
                     type="checkbox"
                     checked={subscribersOnly}
                     onChange={(e) => setSubscribersOnly(e.target.checked)}
+                    disabled={sessionActive}
+                    className="h-4 w-4 accent-emerald-400 disabled:opacity-50"
+                  />
+                </label>
+                <label className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2.5 text-sm text-white/70">
+                  <span className="flex items-center gap-1.5">
+                    Active only
+                    <span
+                      title={`Only entrants with ${ACTIVE_MESSAGE_THRESHOLD}+ chat messages during this giveaway are eligible.`}
+                      className="cursor-help text-white/30"
+                    >
+                      <Icon name="message" className="h-3 w-3" />
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={activeOnly}
+                    onChange={(e) => setActiveOnly(e.target.checked)}
                     disabled={sessionActive}
                     className="h-4 w-4 accent-emerald-400 disabled:opacity-50"
                   />
@@ -639,7 +664,7 @@ export function WinnerPicker() {
 
       {/* Centered overlay so the winner is always visible on screen the
           instant it lands — no scrolling down the page to find it. */}
-      {reel ? (
+      {reels ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm"
           onClick={(e) => {
@@ -656,33 +681,55 @@ export function WinnerPicker() {
               <Icon name="close" className="h-4 w-4" />
             </button>
 
+            {/* One reel per winner — all spin together. Scrolls internally
+                once there are enough winners to overflow the viewport. */}
             <div
-              ref={viewportRef}
-              className="relative h-32 overflow-hidden rounded-2xl border border-emerald-400/30 bg-zinc-900/80 shadow-[0_0_40px_rgba(52,211,153,0.15)]"
+              className={`space-y-3 ${reels.length > 1 ? "max-h-[65vh] overflow-y-auto pr-1" : ""}`}
             >
-              <div className="pointer-events-none absolute inset-y-0 left-1/2 z-10 w-0.5 -translate-x-1/2 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-full bg-gradient-to-r from-zinc-950 via-transparent to-zinc-950" />
-              <div
-                className="flex h-full items-center gap-2.5 px-2 transition-transform ease-out"
-                style={{
-                  transform: `translateX(${-offset}px)`,
-                  transitionDuration: instant ? "0ms" : `${ROLL_DURATION_MS}ms`,
-                }}
-              >
-                {reel.map((name, i) => (
+              {reels.map((strip, reelIndex) => (
+                <div key={reelIndex} className="relative">
+                  {reels.length > 1 ? (
+                    <p className="mb-1.5 text-[10px] font-bold tracking-[0.3em] text-emerald-400/50 uppercase">
+                      Winner {reelIndex + 1}
+                    </p>
+                  ) : null}
                   <div
-                    key={i}
-                    style={{ width: ITEM_WIDTH }}
-                    className={`flex h-24 shrink-0 items-center justify-center rounded-xl border px-3 text-center text-base font-semibold ${
-                      !rolling && i === WINNER_INDEX
-                        ? "border-emerald-400/60 bg-emerald-400/10 text-emerald-300"
-                        : "border-white/10 bg-zinc-900/70 text-white/70"
-                    }`}
+                    ref={reelIndex === 0 ? viewportRef : undefined}
+                    className={`relative ${reels.length > 1 ? "h-20" : "h-32"} overflow-hidden rounded-2xl border border-emerald-400/30 bg-zinc-900/80 shadow-[0_0_40px_rgba(52,211,153,0.15)]`}
                   >
-                    <span className="truncate">{name}</span>
+                    <div className="pointer-events-none absolute inset-y-0 left-1/2 z-10 w-0.5 -translate-x-1/2 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                    <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-full bg-gradient-to-r from-zinc-950 via-transparent to-zinc-950" />
+                    <div
+                      className="flex h-full items-center gap-2.5 px-2 transition-transform ease-out"
+                      style={{
+                        transform: `translateX(${-offset}px)`,
+                        transitionDuration: instant ? "0ms" : `${ROLL_DURATION_MS}ms`,
+                      }}
+                    >
+                      {strip.map((item, i) => (
+                        <div
+                          key={i}
+                          style={{ width: ITEM_WIDTH }}
+                          className={`flex ${reels.length > 1 ? "h-14" : "h-24"} shrink-0 items-center justify-center gap-2 rounded-xl border px-3 text-center ${reels.length > 1 ? "text-sm" : "text-base"} font-semibold ${
+                            !rolling && i === WINNER_INDEX
+                              ? "border-emerald-400/60 bg-emerald-400/10 text-emerald-300"
+                              : "border-white/10 bg-zinc-900/70 text-white/70"
+                          }`}
+                        >
+                          {i === WINNER_INDEX ? (
+                            <Avatar
+                              username={item.username}
+                              avatarUrl={item.avatarUrl}
+                              size={reels.length > 1 ? 22 : 30}
+                            />
+                          ) : null}
+                          <span className="truncate">{item.username}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
 
             {revealed ? (

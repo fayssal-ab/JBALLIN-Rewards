@@ -90,6 +90,15 @@ function centersOf(n: number): number[] {
 // meeting at their shared midpoint — which lands exactly on the next
 // round's slot because every column shares the same fixed height and
 // justify-around spacing. No JS layout measurement needed.
+//
+// The invisible label above the 800px box is not decorative: each round
+// column renders RoundLabel above its own h-[800px] match container, which
+// pushes that container's top down by the label's height. Without a
+// matching spacer here, the connector's own h-[800px] box starts higher on
+// the page than the match columns' do, so its 0%–100% math no longer lines
+// up with the actual card centers — the lines land near the card edges
+// instead of the middle. Reusing RoundLabel's exact classes (as invisible
+// text) guarantees the same height regardless of font-metric changes later.
 function BracketConnector({ sourceCount }: { sourceCount: number }) {
   const centers = centersOf(sourceCount);
   const pairs = Array.from({ length: sourceCount / 2 }, (_, i) => ({
@@ -98,22 +107,27 @@ function BracketConnector({ sourceCount }: { sourceCount: number }) {
   }));
 
   return (
-    <div className="relative hidden h-[800px] w-10 shrink-0 lg:block">
-      {pairs.map((pair, i) => {
-        const mid = (pair.top + pair.bottom) / 2;
-        return (
-          <div key={i}>
-            <div
-              className="absolute left-0 w-full rounded-br-lg border-r-2 border-b-2 border-emerald-400/25"
-              style={{ top: `${pair.top}%`, height: `${mid - pair.top}%` }}
-            />
-            <div
-              className="absolute left-0 w-full rounded-tr-lg border-r-2 border-t-2 border-emerald-400/25"
-              style={{ top: `${mid}%`, height: `${pair.bottom - mid}%` }}
-            />
-          </div>
-        );
-      })}
+    <div className="hidden shrink-0 lg:block">
+      <p aria-hidden className="invisible mb-2 text-center text-[10px] font-bold tracking-[0.3em] uppercase">
+        .
+      </p>
+      <div className="relative h-[800px] w-10">
+        {pairs.map((pair, i) => {
+          const mid = (pair.top + pair.bottom) / 2;
+          return (
+            <div key={i}>
+              <div
+                className="absolute left-0 w-full rounded-br-lg border-r-2 border-b-2 border-emerald-400/25"
+                style={{ top: `${pair.top}%`, height: `${mid - pair.top}%` }}
+              />
+              <div
+                className="absolute left-0 w-full rounded-tr-lg border-r-2 border-t-2 border-emerald-400/25"
+                style={{ top: `${mid}%`, height: `${pair.bottom - mid}%` }}
+              />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
