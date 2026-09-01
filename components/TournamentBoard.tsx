@@ -28,14 +28,12 @@ function SlotBox({
   highlight = false,
   onSave,
   onDeclareWinner,
-  delay = 0,
 }: {
   name: string | null;
   highlight?: boolean;
   onSave: (value: string | null) => void;
   /** Copies this slot's name into the next round and advances the bracket. */
   onDeclareWinner?: () => void;
-  delay?: number;
 }) {
   const [value, setValue] = useState(name ?? "");
 
@@ -52,8 +50,7 @@ function SlotBox({
 
   return (
     <div
-      style={{ animationDelay: `${delay}ms` }}
-      className={`animate-fade-in-up group flex items-center gap-2 rounded-xl border px-3 py-2.5 transition-all duration-300 hover:-translate-y-0.5 ${
+      className={`group flex items-center gap-2 rounded-xl border px-3 py-2.5 transition-all duration-300 hover:-translate-y-0.5 ${
         highlight
           ? "border-emerald-400/50 bg-emerald-400/5 shadow-[0_0_20px_rgba(52,211,153,0.15)] hover:shadow-[0_0_30px_rgba(52,211,153,0.25)]"
           : "border-white/10 bg-zinc-900/50 hover:border-emerald-400/30"
@@ -100,7 +97,7 @@ function BracketConnector({ sourceCount }: { sourceCount: number }) {
   }));
 
   return (
-    <div className="relative hidden h-[520px] w-10 shrink-0 lg:block">
+    <div className="relative hidden h-[800px] w-10 shrink-0 lg:block">
       {pairs.map((pair, i) => {
         const mid = (pair.top + pair.bottom) / 2;
         return (
@@ -220,13 +217,14 @@ export function TournamentBoard({
         {/* Round of 8 */}
         <div>
           <RoundLabel>Round of 8</RoundLabel>
-          <div className="flex h-[520px] w-56 flex-col justify-around gap-4">
+          <div className="flex h-[800px] w-56 flex-col justify-around gap-4">
             {[0, 1, 2, 3].map((pair) => (
               <RealMatch
                 key={pair}
                 round={1}
                 a={pair * 2}
                 b={pair * 2 + 1}
+                label={`Match ${pair + 1}`}
                 nameAt={nameAt}
                 save={save}
                 declareWinner={declareWinner}
@@ -241,13 +239,14 @@ export function TournamentBoard({
         {/* Semifinals */}
         <div>
           <RoundLabel>Semifinals</RoundLabel>
-          <div className="flex h-[520px] w-56 flex-col justify-around gap-4">
+          <div className="flex h-[800px] w-56 flex-col justify-around gap-4">
             {[0, 1].map((pair) => (
               <RealMatch
                 key={pair}
                 round={2}
                 a={pair * 2}
                 b={pair * 2 + 1}
+                label={`Match ${pair + 1}`}
                 nameAt={nameAt}
                 save={save}
                 declareWinner={declareWinner}
@@ -262,11 +261,12 @@ export function TournamentBoard({
         {/* Final */}
         <div>
           <RoundLabel>Final</RoundLabel>
-          <div className="flex h-[520px] w-56 flex-col justify-center">
+          <div className="flex h-[800px] w-56 flex-col justify-center">
             <RealMatch
               round={3}
               a={0}
               b={1}
+              label="Final"
               nameAt={nameAt}
               save={save}
               declareWinner={declareWinner}
@@ -299,6 +299,7 @@ function RealMatch({
   round,
   a,
   b,
+  label,
   nameAt,
   save,
   declareWinner,
@@ -308,28 +309,43 @@ function RealMatch({
   round: Round;
   a: number;
   b: number;
+  label: string;
   nameAt: (round: Round, index: number) => string | null;
   save: (round: Round, slotIndex: number, name: string | null) => void;
   declareWinner: (round: Round, slotIndex: number) => void;
   highlight?: boolean;
   delay?: number;
 }) {
+  // Each match is its own bordered card — pairing used to rely purely on
+  // the gap between boxes being a bit smaller than the gap between
+  // matches, which wasn't obvious at a glance. A visible container around
+  // the two names makes "these two play each other" unambiguous.
   return (
-    <div className="flex flex-col gap-1.5">
+    <div
+      style={{ animationDelay: `${delay}ms` }}
+      className={`animate-fade-in-up rounded-2xl border p-2.5 ${
+        highlight ? "border-emerald-400/25 bg-emerald-400/[0.03]" : "border-white/10 bg-white/[0.02]"
+      }`}
+    >
+      <p className="mb-2 text-center text-[9px] font-bold tracking-[0.2em] text-white/25 uppercase">
+        {label}
+      </p>
       <SlotBox
         name={nameAt(round, a)}
         highlight={highlight}
         onSave={(value) => save(round, a, value)}
         onDeclareWinner={() => declareWinner(round, a)}
-        delay={delay}
       />
-      <p className="text-center text-[10px] tracking-widest text-white/30">VS</p>
+      <div className="my-1.5 flex items-center gap-2">
+        <div className="h-px flex-1 bg-white/10" />
+        <p className="text-[10px] font-bold tracking-widest text-white/40">VS</p>
+        <div className="h-px flex-1 bg-white/10" />
+      </div>
       <SlotBox
         name={nameAt(round, b)}
         highlight={highlight}
         onSave={(value) => save(round, b, value)}
         onDeclareWinner={() => declareWinner(round, b)}
-        delay={delay + 40}
       />
     </div>
   );
