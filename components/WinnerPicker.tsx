@@ -7,15 +7,14 @@ import { SocialIcon } from "@/components/SocialIcon";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { ACTIVE_MESSAGE_THRESHOLD } from "@/lib/giveawayConstants";
 
-const ITEM_WIDTH = 128; // px — must match the w-32 class on each reel card
+const ITEM_WIDTH = 160; // px — must match the w-40 class on each reel card
 const ITEM_GAP = 10; // px — matches gap-2.5
 const STEP = ITEM_WIDTH + ITEM_GAP;
 const REEL_LENGTH = 36;
 const WINNER_INDEX = 28; // leaves a few cards after it so the strip doesn't look like it "ran out"
 const ROLL_DURATION_MS = 4000;
-const VERIFY_DURATION_MS = 900;
 
-const CONFETTI_COLORS = ["#ffd966", "#7fc24d", "#ffffff"];
+const CONFETTI_COLORS = ["#34d399", "#ffffff", "#fbbf24"];
 const CONFETTI_COUNT = 28;
 
 type Mode = "manual" | "kick";
@@ -38,7 +37,9 @@ interface Winner {
   qualifiesActive?: boolean;
 }
 
-// One reel strip per winner being drawn.
+// One reel strip per winner being drawn — only the landing card (index
+// WINNER_INDEX) carries a real avatar; filler cards stay text-only so a
+// 5-winner draw doesn't fire off 150+ avatar image requests at once.
 interface ReelItem {
   username: string;
   avatarUrl: string | null;
@@ -63,32 +64,27 @@ function Avatar({
   username,
   avatarUrl,
   size = 32,
-  ring = false,
 }: {
   username: string;
   avatarUrl: string | null;
   size?: number;
-  ring?: boolean;
 }) {
   const [errored, setErrored] = useState(false);
-  const ringStyle = ring
-    ? { width: size, height: size, border: "3px solid #ffd966", boxShadow: "0 0 0 2px #1a1008" }
-    : { width: size, height: size };
   if (avatarUrl && !errored) {
     return (
       <img
         src={avatarUrl}
         alt=""
         onError={() => setErrored(true)}
-        style={ringStyle}
+        style={{ width: size, height: size }}
         className="shrink-0 rounded-full object-cover"
       />
     );
   }
   return (
     <div
-      style={ringStyle}
-      className="pixel-text flex shrink-0 items-center justify-center rounded-full bg-[#4a3016] text-[9px] font-bold text-[#ffd966]"
+      style={{ width: size, height: size }}
+      className="flex shrink-0 items-center justify-center rounded-full bg-emerald-400/10 text-xs font-bold text-emerald-300"
     >
       {username.slice(0, 2).toUpperCase()}
     </div>
@@ -100,11 +96,14 @@ function ActivityBadge({ messageCount }: { messageCount: number }) {
   const active = messageCount >= ACTIVE_MESSAGE_THRESHOLD;
   return (
     <span
-      className={`pixel-chip ${active ? "pixel-chip-active" : ""} flex shrink-0 items-center gap-1 rounded px-1.5 py-1 text-[8px]`}
+      className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+        active ? "bg-emerald-400/10 text-emerald-300" : "bg-white/5 text-white/40"
+      }`}
       title={`${messageCount} message${messageCount === 1 ? "" : "s"} sent`}
     >
       <Icon name="message" className="h-2.5 w-2.5" />
       {messageCount}
+      {active ? <span className="ml-0.5">Active</span> : null}
     </span>
   );
 }
@@ -132,7 +131,6 @@ export function WinnerPicker() {
   // Roll animation — mode-agnostic, drives off whatever draw() feeds it.
   // One strip per winner being drawn (see ReelItem above).
   const [rolling, setRolling] = useState(false);
-  const [verifying, setVerifying] = useState(false);
   const [reels, setReels] = useState<ReelItem[][] | null>(null);
   const [revealed, setRevealed] = useState<Winner[] | null>(null);
   const [offset, setOffset] = useState(0);
@@ -140,12 +138,10 @@ export function WinnerPicker() {
   const [rollId, setRollId] = useState(0);
   const viewportRef = useRef<HTMLDivElement>(null);
   const finishTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const verifyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
       if (finishTimer.current) clearTimeout(finishTimer.current);
-      if (verifyTimer.current) clearTimeout(verifyTimer.current);
     };
   }, []);
 
@@ -245,7 +241,6 @@ export function WinnerPicker() {
     }
     setReels(null);
     setRevealed(null);
-    setVerifying(false);
   }
 
   function addNames(raw: string) {
@@ -274,18 +269,15 @@ export function WinnerPicker() {
   );
 
   function closeRollOverlay() {
-    if (finishTimer.current) clearTimeout(finishTimer.current);
-    if (verifyTimer.current) clearTimeout(verifyTimer.current);
     setReels(null);
     setRevealed(null);
-    setVerifying(false);
   }
 
   function buildStrip(pool: Participant[], landing: Winner): ReelItem[] {
     return Array.from({ length: REEL_LENGTH }, (_, i) => {
       if (i === WINNER_INDEX) return { username: landing.username, avatarUrl: landing.avatarUrl };
       const p = pool[Math.floor(Math.random() * pool.length)];
-      return { username: p.username, avatarUrl: p.avatarUrl };
+      return { username: p.username, avatarUrl: null };
     });
   }
 
@@ -298,7 +290,6 @@ export function WinnerPicker() {
     const strips = picked.map((w) => buildStrip(pool, w));
 
     if (finishTimer.current) clearTimeout(finishTimer.current);
-    if (verifyTimer.current) clearTimeout(verifyTimer.current);
 
     // The target offset only depends on fixed constants (WINNER_INDEX, STEP,
     // viewport width), so it's identical on every roll. Snapping back to 0
@@ -316,7 +307,6 @@ export function WinnerPicker() {
     // actually landing a real paint between the two writes.
     flushSync(() => {
       setRevealed(null);
-      setVerifying(false);
       setReels(strips);
       setRolling(true);
       setInstant(true);
@@ -330,22 +320,11 @@ export function WinnerPicker() {
 
     // Drives the reveal on a fixed timer instead of the reel's
     // onTransitionEnd — deterministic regardless of whether the browser
-    // actually ran a transition for this particular roll. When there's a
-    // real activity check to run (Kick + Active only), a short "Checking
-    // status…" beat plays first instead of revealing instantly.
+    // actually ran a transition for this particular roll.
     finishTimer.current = setTimeout(() => {
       setRolling(false);
-      if (mode === "kick" && activeOnly) {
-        setVerifying(true);
-        verifyTimer.current = setTimeout(() => {
-          setVerifying(false);
-          setRevealed(picked);
-          setRollId((id) => id + 1);
-        }, VERIFY_DURATION_MS);
-      } else {
-        setRevealed(picked);
-        setRollId((id) => id + 1);
-      }
+      setRevealed(picked);
+      setRollId((id) => id + 1);
     }, ROLL_DURATION_MS + 150);
   }
 
@@ -385,29 +364,30 @@ export function WinnerPicker() {
     }
   }
 
-  const failedCount = revealed?.filter((w) => w.qualifiesActive === false).length ?? 0;
-
   return (
     <div>
       <div className="flex items-center gap-3">
-        <div className="pixel-panel pixel-corners flex h-14 w-14 shrink-0 items-center justify-center">
-          <Icon name="dice" className="h-6 w-6 text-[#ffd966]" />
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/10">
+          <Icon name="dice" className="h-5 w-5 text-emerald-300" />
         </div>
         <div>
-          <p className="pixel-text text-[9px] tracking-widest text-white/40 uppercase">
+          <p className="text-xs tracking-[0.3em] text-white/40 uppercase">
             Giveaway
           </p>
-          <h1 className="pixel-text-gold text-xl sm:text-2xl">Winner Vault</h1>
+          <h1 className="font-display text-3xl uppercase text-white sm:text-4xl">
+            Winner Roller
+          </h1>
         </div>
       </div>
-
       {/* Mode tabs */}
-      <div className="mt-6 flex w-fit gap-2">
+      <div className="mt-6 flex w-fit gap-1 rounded-xl border border-white/10 bg-zinc-900/60 p-1">
         <button
           type="button"
           onClick={() => setMode("manual")}
-          className={`pixel-btn pixel-corners flex items-center gap-1.5 px-4 py-2.5 text-[10px] ${
-            mode === "manual" ? "pixel-btn-green" : "bg-[#3a2514] text-[#d8b98a]"
+          className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-wide transition-all ${
+            mode === "manual"
+              ? "bg-emerald-400 text-black shadow-[0_0_16px_rgba(52,211,153,0.35)]"
+              : "text-white/50 hover:text-white"
           }`}
         >
           <Icon name="list" className="h-3.5 w-3.5" />
@@ -416,8 +396,10 @@ export function WinnerPicker() {
         <button
           type="button"
           onClick={() => setMode("kick")}
-          className={`pixel-btn pixel-corners flex items-center gap-1.5 px-4 py-2.5 text-[10px] ${
-            mode === "kick" ? "pixel-btn-green" : "bg-[#3a2514] text-[#d8b98a]"
+          className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-wide transition-all ${
+            mode === "kick"
+              ? "bg-emerald-400 text-black shadow-[0_0_16px_rgba(52,211,153,0.35)]"
+              : "text-white/50 hover:text-white"
           }`}
         >
           <SocialIcon platform="kick" className="h-3.5 w-3.5" />
@@ -426,38 +408,42 @@ export function WinnerPicker() {
       </div>
 
       {/* Settings | Participants | Winners */}
-      <div className="mt-5 grid gap-5 lg:grid-cols-3">
+      <div className="mt-4 grid gap-5 lg:grid-cols-3">
         {/* Settings */}
-        <div className="pixel-panel pixel-corners overflow-hidden">
-          <div className="flex items-center gap-2 border-b-2 border-black/30 px-4 py-3">
-            <Icon name="bolt" className="h-4 w-4 text-[#ffd966]" />
-            <span className="pixel-text text-[9px] text-[#ffd966]">Settings</span>
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/40">
+          <div className="flex items-center gap-2 border-b border-white/5 px-5 py-4">
+            <Icon name="bolt" className="h-4 w-4 text-white/50" />
+            <span className="text-xs font-bold tracking-wide text-white/70 uppercase">
+              Settings
+            </span>
             {mode === "kick" && sessionActive ? (
-              <span className="pixel-chip pixel-chip-active ml-auto flex items-center gap-1.5 rounded px-2 py-1 text-[8px]">
+              <span className="ml-auto flex items-center gap-1.5 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-red-400 uppercase">
                 <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
                 </span>
                 Live
               </span>
             ) : null}
           </div>
 
-          <div className="space-y-4 p-4">
+          <div className="space-y-4 p-5">
             {mode === "kick" ? (
               <>
                 <div>
-                  <label className="pixel-text text-[8px] text-[#d8b98a]">Keyword</label>
+                  <label className="text-[10px] font-semibold tracking-wide text-white/40 uppercase">
+                    Keyword
+                  </label>
                   <input
                     value={keyword}
                     onChange={(e) => setKeyword(e.target.value)}
                     disabled={sessionActive}
                     placeholder="!giveaway"
-                    className="pixel-panel-dark pixel-text mt-1.5 w-full px-3 py-2.5 text-[10px] text-[#ffd966] focus:outline-none disabled:opacity-50"
+                    className="mt-1 w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-emerald-400/40 focus:outline-none disabled:opacity-50"
                   />
                 </div>
                 <div>
-                  <label className="pixel-text text-[8px] text-[#d8b98a]">
+                  <label className="text-[10px] font-semibold tracking-wide text-white/40 uppercase">
                     Number of winners
                   </label>
                   <input
@@ -466,34 +452,40 @@ export function WinnerPicker() {
                     value={winnerCountInput}
                     onChange={(e) => setWinnerCountInput(e.target.value)}
                     disabled={sessionActive}
-                    className="pixel-panel-dark pixel-text mt-1.5 w-full px-3 py-2.5 text-[10px] text-[#ffd966] focus:outline-none disabled:opacity-50"
+                    className="mt-1 w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-emerald-400/40 focus:outline-none disabled:opacity-50"
                   />
                 </div>
-
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setSubscribersOnly((v) => !v)}
+                <label className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2.5 text-sm text-white/70">
+                  Subscribers only
+                  <input
+                    type="checkbox"
+                    checked={subscribersOnly}
+                    onChange={(e) => setSubscribersOnly(e.target.checked)}
                     disabled={sessionActive}
-                    className={`pixel-chip ${subscribersOnly ? "pixel-chip-active" : ""} flex items-center gap-1 rounded px-2 py-1.5 text-[8px] disabled:opacity-50`}
-                  >
-                    {subscribersOnly ? <Icon name="check" className="h-2.5 w-2.5" /> : null}
-                    Subscribers Only
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveOnly((v) => !v)}
+                    className="h-4 w-4 accent-emerald-400 disabled:opacity-50"
+                  />
+                </label>
+                <label className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2.5 text-sm text-white/70">
+                  <span className="flex items-center gap-1.5">
+                    Active only
+                    <span
+                      title={`Only entrants with ${ACTIVE_MESSAGE_THRESHOLD}+ chat messages during this giveaway are eligible.`}
+                      className="cursor-help text-white/30"
+                    >
+                      <Icon name="message" className="h-3 w-3" />
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={activeOnly}
+                    onChange={(e) => setActiveOnly(e.target.checked)}
                     disabled={sessionActive}
-                    title={`A winner picked with fewer than ${ACTIVE_MESSAGE_THRESHOLD} chat messages gets flagged for a reroll instead of confirmed.`}
-                    className={`pixel-chip ${activeOnly ? "pixel-chip-active" : ""} flex items-center gap-1 rounded px-2 py-1.5 text-[8px] disabled:opacity-50`}
-                  >
-                    {activeOnly ? <Icon name="check" className="h-2.5 w-2.5" /> : null}
-                    Active Only
-                  </button>
-                </div>
+                    className="h-4 w-4 accent-emerald-400 disabled:opacity-50"
+                  />
+                </label>
 
                 {connectWarning ? (
-                  <p className="pixel-text text-[8px] leading-relaxed text-[#f2c35c]">
+                  <p className="text-xs text-amber-400/80">
                     Kick connection issue: {connectWarning}
                   </p>
                 ) : null}
@@ -503,7 +495,7 @@ export function WinnerPicker() {
                     type="button"
                     onClick={stopGiveaway}
                     disabled={kickBusy}
-                    className="pixel-btn pixel-btn-red pixel-corners flex w-full items-center justify-center gap-1.5 px-3 py-3 text-[9px] disabled:opacity-50"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-400/30 px-3 py-2.5 text-xs font-bold text-red-300 hover:bg-red-400/10 disabled:opacity-50"
                   >
                     <Icon name="stop" className="h-3 w-3" />
                     Stop Giveaway
@@ -513,14 +505,16 @@ export function WinnerPicker() {
                     type="button"
                     onClick={startGiveaway}
                     disabled={kickBusy || !keyword.trim()}
-                    className="pixel-btn pixel-btn-green pixel-corners flex w-full items-center justify-center gap-1.5 px-3 py-3 text-[9px] disabled:opacity-50"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-400 px-3 py-2.5 text-xs font-bold text-black transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
                   >
                     <Icon name="bolt" className="h-3.5 w-3.5" />
                     Start Giveaway
                   </button>
                 )}
-                <p className="pixel-text text-[8px] leading-relaxed text-[#d8b98a]">
-                  Viewers type <span className="text-[#ffd966]">{keyword}</span> in chat to join.
+                <p className="text-xs text-white/40">
+                  Viewers type{" "}
+                  <span className="font-semibold text-white/70">{keyword}</span>{" "}
+                  in chat to join.
                 </p>
               </>
             ) : (
@@ -530,10 +524,10 @@ export function WinnerPicker() {
                   addNames(draftName);
                   setDraftName("");
                 }}
-                className="space-y-4"
+                className="space-y-3"
               >
                 <div>
-                  <label className="pixel-text text-[8px] text-[#d8b98a]">
+                  <label className="text-[10px] font-semibold tracking-wide text-white/40 uppercase">
                     Number of winners
                   </label>
                   <input
@@ -541,12 +535,14 @@ export function WinnerPicker() {
                     min={1}
                     value={winnerCountInput}
                     onChange={(e) => setWinnerCountInput(e.target.value)}
-                    className="pixel-panel-dark pixel-text mt-1.5 w-full px-3 py-2.5 text-[10px] text-[#ffd966] focus:outline-none"
+                    className="mt-1 w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-emerald-400/40 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="pixel-text text-[8px] text-[#d8b98a]">Add a name</label>
-                  <div className="mt-1.5 flex gap-2">
+                  <label className="text-[10px] font-semibold tracking-wide text-white/40 uppercase">
+                    Add a name
+                  </label>
+                  <div className="mt-1 flex gap-2">
                     <input
                       value={draftName}
                       onChange={(e) => setDraftName(e.target.value)}
@@ -559,12 +555,12 @@ export function WinnerPicker() {
                         }
                       }}
                       placeholder="Type or paste a list"
-                      className="pixel-panel-dark pixel-text min-w-0 flex-1 px-3 py-2.5 text-[10px] text-[#ffd966] placeholder:text-[#5c4526] focus:outline-none"
+                      className="min-w-0 flex-1 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-white/20 focus:border-emerald-400/40 focus:outline-none"
                     />
                     <button
                       type="submit"
                       disabled={!draftName.trim()}
-                      className="pixel-btn pixel-corners shrink-0 bg-[#3a2514] px-3 py-2 text-[9px] text-[#d8b98a] disabled:opacity-30"
+                      className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-white/60 hover:border-emerald-400/30 hover:text-emerald-300 disabled:opacity-30"
                     >
                       Add
                     </button>
@@ -576,17 +572,19 @@ export function WinnerPicker() {
         </div>
 
         {/* Participants */}
-        <div className="pixel-panel pixel-corners flex flex-col overflow-hidden">
-          <div className="flex items-center gap-2 border-b-2 border-black/30 px-4 py-3">
-            <Icon name="users" className="h-4 w-4 text-[#ffd966]" />
-            <span className="pixel-text text-[9px] text-[#ffd966]">Entries</span>
-            <span className="pixel-chip ml-auto rounded px-2 py-1 text-[8px]">
+        <div className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/40">
+          <div className="flex items-center gap-2 border-b border-white/5 px-5 py-4">
+            <Icon name="users" className="h-4 w-4 text-white/50" />
+            <span className="text-xs font-bold tracking-wide text-white/70 uppercase">
+              Participants
+            </span>
+            <span className="ml-auto rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-bold text-white/50">
               {participants.length}
             </span>
           </div>
-          <div className="max-h-[28rem] flex-1 space-y-2 overflow-y-auto p-3">
+          <div className="max-h-[28rem] flex-1 space-y-2 overflow-y-auto p-4">
             {participants.length === 0 ? (
-              <p className="pixel-text p-2 text-[9px] leading-relaxed text-[#8a6c46]">
+              <p className="p-2 text-sm text-white/30">
                 {mode === "kick"
                   ? "Waiting for entries…"
                   : "No participants yet — add names on the left."}
@@ -595,10 +593,10 @@ export function WinnerPicker() {
               participants.map((p) => (
                 <div
                   key={p.username}
-                  className="pixel-panel-dark flex items-center gap-2.5 rounded px-3 py-2.5"
+                  className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] px-3.5 py-2.5"
                 >
-                  <Avatar username={p.username} avatarUrl={p.avatarUrl} size={28} />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-[#f0dcb8]">
+                  <Avatar username={p.username} avatarUrl={p.avatarUrl} size={32} />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">
                     {p.username}
                   </span>
                   {mode === "kick" ? (
@@ -609,9 +607,9 @@ export function WinnerPicker() {
                       type="button"
                       onClick={() => removeParticipant(p.username)}
                       aria-label={`Remove ${p.username}`}
-                      className="pixel-btn pixel-btn-red pixel-corners shrink-0 px-2 py-1 text-[8px]"
+                      className="shrink-0 rounded-full p-1 text-white/30 hover:bg-red-400/10 hover:text-red-300"
                     >
-                      Kick
+                      <Icon name="close" className="h-3.5 w-3.5" />
                     </button>
                   ) : null}
                 </div>
@@ -621,33 +619,35 @@ export function WinnerPicker() {
         </div>
 
         {/* Winners */}
-        <div className="pixel-panel pixel-corners flex flex-col overflow-hidden">
-          <div className="flex items-center gap-2 border-b-2 border-black/30 px-4 py-3">
-            <Icon name="trophy" className="h-4 w-4 text-[#ffd966]" />
-            <span className="pixel-text text-[9px] text-[#ffd966]">Winners</span>
-            <span className="pixel-chip pixel-chip-active ml-auto rounded px-2 py-1 text-[8px]">
+        <div className="flex flex-col overflow-hidden rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-400/[0.05] to-transparent">
+          <div className="flex items-center gap-2 border-b border-white/5 px-5 py-4">
+            <Icon name="trophy" className="h-4 w-4 text-emerald-300" />
+            <span className="text-xs font-bold tracking-wide text-white/70 uppercase">
+              Winners
+            </span>
+            <span className="ml-auto rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
               {winners.length}
             </span>
           </div>
-          <div className="max-h-[28rem] flex-1 space-y-2 overflow-y-auto p-3">
+          <div className="max-h-[28rem] flex-1 space-y-2 overflow-y-auto p-4">
             {winners.length === 0 ? (
-              <p className="pixel-text p-2 text-[9px] leading-relaxed text-[#8a6c46]">
-                Nobody drawn yet — click Roll below.
+              <p className="p-2 text-sm text-white/30">
+                Nobody drawn yet — click Draw Winner below.
               </p>
             ) : (
               winners.map((w, i) => (
                 <div
                   key={`${w.username}-${i}`}
-                  className="pixel-panel-dark flex items-center gap-2.5 rounded px-3 py-2.5"
+                  className="flex items-center gap-3 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3.5 py-2.5"
                 >
-                  <Avatar username={w.username} avatarUrl={w.avatarUrl} size={28} ring />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-[#f0dcb8]">
+                  <Avatar username={w.username} avatarUrl={w.avatarUrl} size={32} />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">
                     {w.username}
                   </span>
                   {mode === "kick" ? (
                     <ActivityBadge messageCount={w.messageCount ?? 0} />
                   ) : null}
-                  <Icon name="crown" className="h-4 w-4 shrink-0 text-[#ffd966]" />
+                  <Icon name="crown" className="h-4 w-4 shrink-0 text-emerald-300" />
                 </div>
               ))
             )}
@@ -660,16 +660,16 @@ export function WinnerPicker() {
           type="button"
           onClick={() => draw()}
           disabled={rolling || participants.length === 0 || (mode === "kick" && kickBusy)}
-          className="pixel-btn pixel-btn-green pixel-corners flex items-center gap-2 px-7 py-4 text-[11px] disabled:opacity-40"
+          className="flex items-center gap-2 rounded-xl bg-emerald-400 px-7 py-3.5 text-sm font-bold text-black shadow-[0_0_24px_rgba(52,211,153,0.3)] transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
         >
           <Icon name="dice" className={`h-4 w-4 ${rolling ? "animate-spin" : ""}`} />
-          {rolling ? "Rolling…" : `Roll ${winnerCount > 1 ? `${winnerCount} Winners` : "Winner"}`}
+          {rolling ? "Rolling…" : `Draw ${winnerCount > 1 ? `${winnerCount} Winners` : "Winner"}`}
         </button>
         <button
           type="button"
           onClick={resetAll}
           disabled={rolling}
-          className="pixel-btn pixel-btn-red pixel-corners px-5 py-4 text-[11px] disabled:opacity-40"
+          className="rounded-xl border border-red-400/30 px-5 py-3.5 text-sm font-bold text-red-300 hover:bg-red-400/10 disabled:opacity-40"
         >
           Reset
         </button>
@@ -679,7 +679,7 @@ export function WinnerPicker() {
           instant it lands — no scrolling down the page to find it. */}
       {reels ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-6 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm"
           onClick={(e) => {
             if (e.target === e.currentTarget) closeRollOverlay();
           }}
@@ -689,7 +689,7 @@ export function WinnerPicker() {
               type="button"
               onClick={closeRollOverlay}
               aria-label="Close"
-              className="pixel-btn pixel-corners absolute -top-12 right-0 bg-[#3a2514] p-2 text-[#d8b98a]"
+              className="absolute -top-11 right-0 rounded-full border border-white/10 p-2 text-white/40 hover:border-white/30 hover:text-white"
             >
               <Icon name="close" className="h-4 w-4" />
             </button>
@@ -697,21 +697,21 @@ export function WinnerPicker() {
             {/* One reel per winner — all spin together. Scrolls internally
                 once there are enough winners to overflow the viewport. */}
             <div
-              className={`space-y-3 ${reels.length > 1 ? "max-h-[60vh] overflow-y-auto pr-1" : ""}`}
+              className={`space-y-3 ${reels.length > 1 ? "max-h-[65vh] overflow-y-auto pr-1" : ""}`}
             >
               {reels.map((strip, reelIndex) => (
                 <div key={reelIndex} className="relative">
                   {reels.length > 1 ? (
-                    <p className="pixel-text mb-1.5 text-[8px] text-[#ffd966]">
+                    <p className="mb-1.5 text-[10px] font-bold tracking-[0.3em] text-emerald-400/50 uppercase">
                       Winner {reelIndex + 1}
                     </p>
                   ) : null}
                   <div
                     ref={reelIndex === 0 ? viewportRef : undefined}
-                    className={`pixel-panel pixel-corners relative ${reels.length > 1 ? "h-24" : "h-32"} overflow-hidden`}
+                    className={`relative ${reels.length > 1 ? "h-20" : "h-32"} overflow-hidden rounded-2xl border border-emerald-400/30 bg-zinc-900/80 shadow-[0_0_40px_rgba(52,211,153,0.15)]`}
                   >
-                    <div className="pointer-events-none absolute inset-y-0 left-1/2 z-10 w-1 -translate-x-1/2 bg-[#ffd966] shadow-[0_0_10px_rgba(255,217,102,0.9)]" />
-                    <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-full bg-gradient-to-r from-[#2b1b10] via-transparent to-[#2b1b10]" />
+                    <div className="pointer-events-none absolute inset-y-0 left-1/2 z-10 w-0.5 -translate-x-1/2 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                    <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-full bg-gradient-to-r from-zinc-950 via-transparent to-zinc-950" />
                     <div
                       className="flex h-full items-center gap-2.5 px-2 transition-transform ease-out"
                       style={{
@@ -719,123 +719,91 @@ export function WinnerPicker() {
                         transitionDuration: instant ? "0ms" : `${ROLL_DURATION_MS}ms`,
                       }}
                     >
-                      {strip.map((item, i) => {
-                        const landed = !rolling && i === WINNER_INDEX;
-                        const failed = landed && revealed?.[reelIndex]?.qualifiesActive === false;
-                        return (
-                          <div
-                            key={i}
-                            style={{ width: ITEM_WIDTH }}
-                            className={`flex ${reels.length > 1 ? "h-20" : "h-28"} shrink-0 flex-col items-center justify-center gap-1 rounded border-2 px-2 text-center ${
-                              landed
-                                ? failed
-                                  ? "border-[#f2c35c] bg-[#3d2b06]"
-                                  : "border-[#ffd966] bg-[#3a2f14]"
-                                : "border-black/30 bg-[#241609]"
-                            }`}
-                          >
+                      {strip.map((item, i) => (
+                        <div
+                          key={i}
+                          style={{ width: ITEM_WIDTH }}
+                          className={`flex ${reels.length > 1 ? "h-14" : "h-24"} shrink-0 items-center justify-center gap-2 rounded-xl border px-3 text-center ${reels.length > 1 ? "text-sm" : "text-base"} font-semibold ${
+                            !rolling && i === WINNER_INDEX
+                              ? revealed?.[reelIndex]?.qualifiesActive === false
+                                ? "border-amber-400/60 bg-amber-400/10 text-amber-300"
+                                : "border-emerald-400/60 bg-emerald-400/10 text-emerald-300"
+                              : "border-white/10 bg-zinc-900/70 text-white/70"
+                          }`}
+                        >
+                          {i === WINNER_INDEX ? (
                             <Avatar
                               username={item.username}
                               avatarUrl={item.avatarUrl}
-                              size={reels.length > 1 ? 30 : 38}
-                              ring={landed && !failed}
+                              size={reels.length > 1 ? 22 : 30}
                             />
-                            <span
-                              className={`truncate text-[10px] font-semibold ${
-                                landed ? (failed ? "text-[#f2c35c]" : "text-[#ffd966]") : "text-[#a88a5f]"
-                              }`}
-                            >
-                              {item.username}
-                            </span>
-                          </div>
-                        );
-                      })}
+                          ) : null}
+                          <span className="truncate">{item.username}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            {verifying ? (
-              <div className="pixel-panel pixel-corners relative mt-6 overflow-hidden p-6 text-center">
-                <div className="mx-auto flex w-fit items-center gap-2">
-                  <Icon name="message" className="h-4 w-4 animate-pulse text-[#ffd966]" />
-                  <p className="pixel-text animate-pulse text-[10px] text-[#ffd966]">
-                    Checking activity status…
-                  </p>
-                </div>
-              </div>
-            ) : null}
-
             {revealed ? (
-              <div className="pixel-panel pixel-corners animate-glow-pulse relative mt-6 overflow-hidden p-8 text-center">
-                {failedCount === 0
-                  ? confetti.map((c) => (
-                      <span
-                        key={c.id}
-                        className="animate-confetti pointer-events-none absolute top-0 h-2 w-2"
-                        style={{
-                          left: `${c.left}%`,
-                          animationDelay: `${c.delay}ms`,
-                          backgroundColor: c.color,
-                          transform: `rotate(${c.rotate}deg)`,
-                        }}
-                      />
-                    ))
-                  : null}
+              <div className="animate-glow-pulse relative mt-6 overflow-hidden rounded-2xl border border-emerald-400/50 bg-gradient-to-b from-emerald-400/10 to-emerald-400/5 p-8 text-center">
+                {confetti.map((c) => (
+                  <span
+                    key={c.id}
+                    className="animate-confetti pointer-events-none absolute top-0 h-2 w-2"
+                    style={{
+                      left: `${c.left}%`,
+                      animationDelay: `${c.delay}ms`,
+                      backgroundColor: c.color,
+                      transform: `rotate(${c.rotate}deg)`,
+                    }}
+                  />
+                ))}
                 <span className="animate-crown-bounce inline-block">
-                  <Icon name="crown" className="h-10 w-10 text-[#ffd966]" />
+                  <Icon name="crown" className="h-10 w-10 text-emerald-300" />
                 </span>
-                <p className="pixel-text mt-2 flex items-center justify-center gap-1.5 text-[9px] text-[#d8b98a]">
-                  {revealed.length > 1 ? "Winners Selected" : "Winner Selected"}
+                <p className="mt-1 flex items-center justify-center gap-1.5 text-xs tracking-[0.3em] text-emerald-400/60 uppercase">
+                  <Icon name="trophy" className="h-4 w-4" />
+                  {revealed.length > 1 ? "Winners" : "Winner"}
                 </p>
-                <div className="relative z-10 mt-4 space-y-4">
+                <div className="relative z-10 mt-4 space-y-3">
                   {revealed.map((w) => (
-                    <div key={w.username} className="flex flex-col items-center gap-1.5">
+                    <div key={w.username} className="flex flex-col items-center gap-1">
                       <div className="flex items-center justify-center gap-3">
-                        <Avatar
-                          username={w.username}
-                          avatarUrl={w.avatarUrl}
-                          size={44}
-                          ring={w.qualifiesActive !== false}
-                        />
+                        <Avatar username={w.username} avatarUrl={w.avatarUrl} size={40} />
                         <span
-                          className={`pixel-text-gold animate-winner-pop text-base sm:text-lg ${
-                            w.qualifiesActive === false ? "opacity-50" : ""
+                          className={`font-display animate-winner-pop text-3xl uppercase sm:text-4xl ${
+                            w.qualifiesActive === false ? "text-white/40" : "text-white"
                           }`}
                         >
                           {w.username}
                         </span>
                       </div>
                       {w.qualifiesActive === false ? (
-                        <p className="pixel-text flex items-center gap-1 text-[8px] text-[#f2c35c]">
+                        <p className="flex items-center gap-1 text-xs font-semibold text-amber-400">
                           <Icon name="message" className="h-3 w-3" />
-                          Not active enough — needs a reroll
+                          Not active enough in chat — needs a reroll
                         </p>
                       ) : null}
                     </div>
                   ))}
                 </div>
 
-                {failedCount > 0 ? (
+                {revealed.some((w) => w.qualifiesActive === false) ? (
                   <button
                     type="button"
-                    onClick={() => draw(failedCount)}
+                    onClick={() =>
+                      draw(revealed.filter((w) => w.qualifiesActive === false).length)
+                    }
                     disabled={rolling || (mode === "kick" && kickBusy)}
-                    className="pixel-btn pixel-btn-amber pixel-corners relative z-10 mx-auto mt-6 flex items-center justify-center gap-1.5 px-5 py-3 text-[9px] disabled:opacity-40"
+                    className="relative z-10 mx-auto mt-5 flex items-center justify-center gap-1.5 rounded-lg border border-amber-400/40 px-4 py-2 text-xs font-bold text-amber-300 hover:bg-amber-400/10 disabled:opacity-40"
                   >
                     <Icon name="dice" className="h-3.5 w-3.5" />
-                    Reroll {failedCount} Inactive
+                    Reroll {revealed.filter((w) => w.qualifiesActive === false).length} Inactive
                   </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={closeRollOverlay}
-                    className="pixel-btn pixel-btn-green pixel-corners relative z-10 mx-auto mt-6 block px-8 py-3 text-[10px]"
-                  >
-                    Continue
-                  </button>
-                )}
+                ) : null}
               </div>
             ) : null}
           </div>
