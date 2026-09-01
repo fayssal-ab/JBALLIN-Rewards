@@ -16,7 +16,9 @@ const WINNER_INDEX = 28; // leaves a few cards after it so the strip doesn't loo
 const ROLL_DURATION_MS = 4000;
 const WHEEL_DURATION_MS = 4500;
 const WHEEL_EXTRA_SPINS = 6;
-const WHEEL_COLORS = ["#10b981", "#065f46", "#34d399", "#047857", "#0d9488", "#059669"];
+// Deliberately varied hues, not shades of one color — a wheel where every
+// wedge is basically the same green reads as a flat blob, not a wheel.
+const WHEEL_COLORS = ["#10b981", "#7c3aed", "#f59e0b", "#ef4444", "#06b6d4", "#ec4899"];
 
 const CONFETTI_COLORS = ["#34d399", "#ffffff", "#fbbf24"];
 const CONFETTI_COUNT = 28;
@@ -179,6 +181,12 @@ export function WinnerPicker() {
   const [manualWinners, setManualWinners] = useState<Winner[]>([]);
   const [wheelRotation, setWheelRotation] = useState(0);
   const [wheelSpinning, setWheelSpinning] = useState(false);
+  // Snapshot of what the wheel actually shows — kept in sync with the live
+  // pool only while idle. While spinning/revealing it's frozen, so the just-
+  // won wedge doesn't vanish (and every other wedge's angle reflow) the
+  // instant the winner is confirmed; it only updates once the reveal is
+  // dismissed and a fresh spin is about to start.
+  const [wheelNames, setWheelNames] = useState<string[]>([]);
   const wheelTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Kick mode: settings + server-synced entries/winners.
@@ -256,6 +264,12 @@ export function WinnerPicker() {
       .filter((n) => !wonUsernames.has(n))
       .map((n) => ({ username: n, avatarUrl: null }));
   }, [mode, kickEntries, manualNames, wonUsernames, subscribersOnly]);
+
+  useEffect(() => {
+    if (!wheelSpinning && !revealed) {
+      setWheelNames(participants.map((p) => p.username));
+    }
+  }, [participants, wheelSpinning, revealed]);
 
   // Auto-connects the Kick webhook on the server the first time this is
   // called (see the "start" action) — no separate setup step to click.
@@ -398,9 +412,17 @@ export function WinnerPicker() {
     // Drives the reveal on a fixed timer instead of the reel's
     // onTransitionEnd — deterministic regardless of whether the browser
     // actually ran a transition for this particular roll.
+    //
+    // Winners only get added here, once the roll has actually finished —
+    // not back when the roll started. Adding them earlier shrank
+    // `participants` (winners are excluded from it) while the animation
+    // was still running, which is only cosmetic for the reel (its strip is
+    // already a fixed snapshot) but is what the Winners panel was doing:
+    // showing the winner as confirmed before the reel had even landed.
     finishTimer.current = setTimeout(() => {
       setRolling(false);
       setRevealed(picked);
+      setKickWinners((w) => [...w, ...picked.filter((p) => p.qualifiesActive !== false)]);
       setRollId((id) => id + 1);
       rollSound.winChime();
     }, ROLL_DURATION_MS + 150);
@@ -424,9 +446,6 @@ export function WinnerPicker() {
       setKickBusy(false);
       const picked: Winner[] = data?.winners ?? [];
       if (picked.length === 0) return;
-      // Only picks that cleared the activity check were actually persisted
-      // server-side — mirror that here so the Winners panel matches the DB.
-      setKickWinners((w) => [...w, ...picked.filter((p) => p.qualifiesActive !== false)]);
       runReelAnimation(participants, picked);
     } else {
       spinWheel();
@@ -441,6 +460,12 @@ export function WinnerPicker() {
   // flushSync/reflow trick needed like the reel's repeat-roll fix.
   function spinWheel() {
     if (wheelSpinning || participants.length === 0) return;
+    // Force the wheel's displayed wedges back in sync with the live pool
+    // right now — if the previous reveal is still open, wheelNames is still
+    // frozen on the pre-that-winner-removed list, which would otherwise
+    // land this spin's math against a different set of wedges than what's
+    // actually drawn.
+    setWheelNames(participants.map((p) => p.username));
     const index = Math.floor(Math.random() * participants.length);
     const winner = participants[index];
     const wedgeAngle = 360 / participants.length;
@@ -459,11 +484,17 @@ export function WinnerPicker() {
     setRevealed(null);
     setWheelSpinning(true);
     setWheelRotation((r) => r + WHEEL_EXTRA_SPINS * 360 + delta);
-    setManualWinners((w) => [...w, picked]);
 
+    // Winner is added only once the spin actually finishes — not here at
+    // the start. `participants` excludes existing winners, and the wheel's
+    // wedges are bound directly to `participants`, so adding the winner
+    // early would shrink the wheel (and reflow every remaining wedge's
+    // angle) while it was still supposed to be spinning down to land on
+    // them.
     wheelTimer.current = setTimeout(() => {
       setWheelSpinning(false);
       setRevealed([picked]);
+      setManualWinners((w) => [...w, picked]);
       setRollId((id) => id + 1);
       rollSound.winChime();
     }, WHEEL_DURATION_MS + 100);
@@ -758,7 +789,7 @@ export function WinnerPicker() {
       {mode === "manual" ? (
         <div className="mt-6 max-w-sm">
           <NamesWheel
-            names={participants.map((p) => p.username)}
+            names={wheelNames}
             rotation={wheelRotation}
             spinning={wheelSpinning}
           />
