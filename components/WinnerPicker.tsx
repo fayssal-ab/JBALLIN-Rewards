@@ -178,6 +178,7 @@ export function WinnerPicker() {
   // Manual mode: typed names, no avatars, winners tracked only in this tab.
   const [manualNames, setManualNames] = useState<string[]>([]);
   const [draftName, setDraftName] = useState("");
+  const [participantSearch, setParticipantSearch] = useState("");
   const [manualWinners, setManualWinners] = useState<Winner[]>([]);
   const [wheelRotation, setWheelRotation] = useState(0);
   const [wheelSpinning, setWheelSpinning] = useState(false);
@@ -264,6 +265,13 @@ export function WinnerPicker() {
       .filter((n) => !wonUsernames.has(n))
       .map((n) => ({ username: n, avatarUrl: null }));
   }, [mode, kickEntries, manualNames, wonUsernames, subscribersOnly]);
+
+  // Search only narrows what's displayed — the draw pool stays `participants`.
+  const visibleParticipants = useMemo(() => {
+    const q = participantSearch.trim().toLowerCase();
+    if (!q) return participants;
+    return participants.filter((p) => p.username.toLowerCase().includes(q));
+  }, [participants, participantSearch]);
 
   useEffect(() => {
     if (!wheelSpinning && !revealed) {
@@ -713,6 +721,22 @@ export function WinnerPicker() {
               {participants.length}
             </span>
           </div>
+          {participants.length > 0 ? (
+            <div className="border-b border-white/5 px-4 py-2.5">
+              <div className="relative">
+                <Icon
+                  name="search"
+                  className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-white/30"
+                />
+                <input
+                  value={participantSearch}
+                  onChange={(e) => setParticipantSearch(e.target.value)}
+                  placeholder="Search participants…"
+                  className="w-full rounded-lg border border-white/10 bg-zinc-900 py-1.5 pr-3 pl-8 text-xs text-white placeholder:text-white/25 focus:border-emerald-400/40 focus:outline-none"
+                />
+              </div>
+            </div>
+          ) : null}
           <div className="max-h-[28rem] flex-1 space-y-2 overflow-y-auto p-4">
             {participants.length === 0 ? (
               <p className="p-2 text-sm text-white/30">
@@ -720,8 +744,10 @@ export function WinnerPicker() {
                   ? "Waiting for entries…"
                   : "No participants yet — add names on the left."}
               </p>
+            ) : visibleParticipants.length === 0 ? (
+              <p className="p-2 text-sm text-white/30">No matches for “{participantSearch}”.</p>
             ) : (
-              participants.map((p) => (
+              visibleParticipants.map((p) => (
                 <div
                   key={p.username}
                   className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] px-3.5 py-2.5"

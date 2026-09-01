@@ -6,6 +6,7 @@ import {
 } from "@/lib/prediction";
 import { isAdminSession } from "@/lib/admin";
 import { BonusHuntBoard } from "@/components/BonusHuntBoard";
+import { Icon } from "@/components/Icon";
 
 export const dynamic = "force-dynamic";
 
@@ -24,12 +25,21 @@ export default async function AdminBonusHuntPage() {
 
   return (
     <div>
-      <p className="text-xs tracking-[0.3em] text-white/40 uppercase">
-        Live bonus hunt
-      </p>
-      <h1 className="font-display text-3xl uppercase text-white sm:text-4xl">
-        Bonus Hunt
-      </h1>
+      <div className="flex items-center gap-4">
+        <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-emerald-400/40 bg-gradient-to-br from-emerald-400/20 to-emerald-400/5 shadow-[0_0_30px_rgba(52,211,153,0.25)]">
+          <div className="animate-glow-pulse absolute inset-0 rounded-2xl" />
+          <Icon name="box" className="h-7 w-7 text-emerald-300" />
+        </div>
+        <div>
+          <p className="flex items-center gap-1.5 text-xs font-bold tracking-[0.3em] text-emerald-400/70 uppercase">
+            <Icon name="bolt" className="h-3 w-3" />
+            Live Bonus Hunt
+          </p>
+          <h1 className="animate-shimmer-text font-display bg-gradient-to-r from-white via-emerald-200 to-white bg-clip-text text-4xl text-transparent uppercase sm:text-5xl">
+            Bonus Hunt
+          </h1>
+        </div>
+      </div>
 
       <BonusHuntBoard
         entries={entries}

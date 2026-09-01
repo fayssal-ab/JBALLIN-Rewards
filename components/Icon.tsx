@@ -11,7 +11,8 @@ export type IconName =
   | "users"
   | "dice"
   | "stop"
-  | "message";
+  | "message"
+  | "search";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   check: (
@@ -125,6 +126,18 @@ const PATHS: Record<IconName, React.ReactNode> = {
       strokeLinejoin="round"
       d="M4 5h16v11H9l-4 4V5Z"
     />
+  ),
+  search: (
+    <>
+      <circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" strokeWidth={2} />
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        d="M20 20l-4.35-4.35"
+      />
+    </>
   ),
 };
 

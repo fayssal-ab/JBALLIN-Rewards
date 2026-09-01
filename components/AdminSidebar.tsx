@@ -8,7 +8,7 @@ const LINKS: { label: string; href: string; icon: IconName }[] = [
   { label: "Tournament", href: "/admin/tournaments", icon: "trophy" },
   { label: "Bonus Hunt", href: "/admin/bonus-hunt", icon: "box" },
   { label: "Giveaway", href: "/admin/winner-picker", icon: "dice" },
-  { label: "Store", href: "/admin/merch", icon: "shirt" },
+  { label: "Merch Admin", href: "/admin/merch", icon: "shirt" },
 ];
 
 // Sticky on desktop so the nav stays reachable while the panel content

@@ -68,7 +68,7 @@ function SlotNameInput({
         onFocus={() => suggestions.length > 0 && setOpen(true)}
         placeholder="Slot name"
         autoComplete="off"
-        className="w-40 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white"
+        className="w-40 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-emerald-400/40 focus:outline-none"
       />
       {open && suggestions.length > 0 ? (
         <div className="absolute left-0 top-full z-10 mt-1 max-h-56 w-64 overflow-y-auto rounded-md border border-white/10 bg-zinc-900 shadow-lg">
@@ -183,18 +183,21 @@ export function BonusHuntBoard({
       ? remainingToBreakEven / pendingCost
       : 0;
 
-  const stats = [
-    { label: "Starting Balance", value: currency.format(Number(startingBalance)) },
-    { label: "Total Cost", value: currency.format(totalCost) },
-    { label: "Total Payout", value: currency.format(totalPayout) },
+  type Tone = "neutral" | "profit" | "loss";
+  const stats: { label: string; value: string; tone: Tone }[] = [
+    { label: "Starting Balance", value: currency.format(Number(startingBalance)), tone: "neutral" },
+    { label: "Total Cost", value: currency.format(totalCost), tone: "neutral" },
+    { label: "Total Payout", value: currency.format(totalPayout), tone: "neutral" },
     {
       label: "Profit / Loss",
       value: `${profit >= 0 ? "+" : ""}${currency.format(profit)} (${profit >= 0 ? "+" : ""}${profitPercent.toFixed(1)}%)`,
+      tone: profit >= 0 ? "profit" : "loss",
     },
-    { label: "Average X", value: `${averageX.toFixed(2)}x` },
+    { label: "Average X", value: `${averageX.toFixed(2)}x`, tone: "neutral" },
     {
       label: "Required Avg X",
       value: requiredAvgX > 0 ? `${requiredAvgX.toFixed(2)}x` : "Break even reached",
+      tone: requiredAvgX > 0 ? "neutral" : "profit",
     },
   ];
 
@@ -245,40 +248,62 @@ export function BonusHuntBoard({
 
   return (
     <div>
-      <div className="mt-6 flex flex-wrap items-center gap-2 text-xs">
-        <span className="text-white/40">Starting balance:</span>
+      <div className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-gradient-to-b from-zinc-900/60 to-zinc-900/20 p-5 shadow-[0_0_25px_rgba(0,0,0,0.3)]">
+        <div className="flex items-center gap-2">
+          <Icon name="bolt" className="h-4 w-4 text-emerald-300" />
+          <span className="text-xs font-bold tracking-wide text-white/70 uppercase">
+            Starting Balance
+          </span>
+        </div>
         <input
           value={balanceInput}
           onChange={(e) => setBalanceInput(e.target.value)}
-          className="w-24 rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-white"
+          className="w-32 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-emerald-400/40 focus:outline-none"
         />
         <button
           onClick={saveBalance}
           disabled={busy}
-          className="rounded-md border border-emerald-400/30 px-3 py-1 text-emerald-300 hover:bg-emerald-400/10 disabled:opacity-50"
+          className="rounded-lg bg-emerald-400 px-4 py-2 text-xs font-bold text-black transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
         >
           Save
         </button>
         <button
           onClick={resetHunt}
           disabled={busy}
-          className="rounded-md border border-red-400/30 px-3 py-1 text-red-300 hover:bg-red-400/10 disabled:opacity-50"
+          className="ml-auto rounded-lg border border-red-400/30 px-4 py-2 text-xs font-bold text-red-300 hover:bg-red-400/10 disabled:opacity-50"
         >
-          Reset hunt
+          Reset Hunt
         </button>
       </div>
 
-      {/* Stats */}
-      <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      {/* Stats — Profit/Loss and Required Avg X are color-coded (emerald
+          when in-the-green / already broke even, red otherwise) so the
+          hunt's overall status reads at a glance instead of every stat
+          looking equally neutral. */}
+      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="rounded-2xl border border-white/10 bg-zinc-900/40 p-4 text-center"
+            className={`rounded-2xl border p-5 text-center shadow-[0_0_20px_rgba(0,0,0,0.25)] ${
+              stat.tone === "profit"
+                ? "border-emerald-400/30 bg-emerald-400/5"
+                : stat.tone === "loss"
+                  ? "border-red-400/30 bg-red-400/5"
+                  : "border-white/10 bg-gradient-to-b from-zinc-900/60 to-zinc-900/20"
+            }`}
           >
-            <p className="font-display text-lg text-emerald-300 sm:text-xl">
+            <p
+              className={`font-display text-lg sm:text-xl ${
+                stat.tone === "profit"
+                  ? "text-emerald-300"
+                  : stat.tone === "loss"
+                    ? "text-red-400"
+                    : "text-white"
+              }`}
+            >
               {stat.value}
             </p>
-            <p className="mt-1 text-[10px] tracking-wide text-white/40 uppercase">
+            <p className="mt-1.5 text-[10px] tracking-wide text-white/40 uppercase">
               {stat.label}
             </p>
           </div>
@@ -431,45 +456,59 @@ export function BonusHuntBoard({
 
       {/* Add entry — kept above the list so it stays reachable without
           scrolling once the hunt has a lot of entries. */}
-      <form
-        onSubmit={addEntry}
-        className="mt-8 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-zinc-900/40 p-4"
-      >
-        <SlotNameInput
-          value={form.slotName}
-          onChange={(slotName) => setForm({ ...form, slotName })}
-          onPick={(slot) =>
-            setForm({ ...form, slotName: slot.name, provider: slot.provider, imageUrl: slot.imageUrl })
-          }
-        />
-        <input
-          value={form.provider}
-          onChange={(e) => setForm({ ...form, provider: e.target.value })}
-          placeholder="Provider (optional)"
-          className="w-40 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white"
-        />
-        <input
-          value={form.bet}
-          onChange={(e) => setForm({ ...form, bet: e.target.value })}
-          placeholder="Bet"
-          className="w-24 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white"
-        />
-        <button
-          type="submit"
-          disabled={busy}
-          className="rounded-md bg-emerald-400 px-4 py-2 text-sm font-semibold text-black disabled:opacity-50"
-        >
-          Add bonus
-        </button>
-      </form>
+      <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-zinc-900/60 to-zinc-900/20 shadow-[0_0_25px_rgba(0,0,0,0.3)]">
+        <div className="flex items-center gap-2 border-b border-white/5 bg-white/[0.02] px-5 py-4">
+          <Icon name="box" className="h-4 w-4 text-emerald-300" />
+          <span className="text-xs font-bold tracking-wide text-white/70 uppercase">
+            Add Bonus
+          </span>
+        </div>
+        <form onSubmit={addEntry} className="flex flex-wrap items-center gap-2 p-5">
+          <SlotNameInput
+            value={form.slotName}
+            onChange={(slotName) => setForm({ ...form, slotName })}
+            onPick={(slot) =>
+              setForm({ ...form, slotName: slot.name, provider: slot.provider, imageUrl: slot.imageUrl })
+            }
+          />
+          <input
+            value={form.provider}
+            onChange={(e) => setForm({ ...form, provider: e.target.value })}
+            placeholder="Provider (optional)"
+            className="w-40 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-emerald-400/40 focus:outline-none"
+          />
+          <input
+            value={form.bet}
+            onChange={(e) => setForm({ ...form, bet: e.target.value })}
+            placeholder="Bet"
+            className="w-24 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-emerald-400/40 focus:outline-none"
+          />
+          <button
+            type="submit"
+            disabled={busy}
+            className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-bold text-black transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+          >
+            Add Bonus
+          </button>
+        </form>
+      </div>
 
       {/* Bonus list */}
       {entries.length === 0 ? (
-        <div className="mt-10 rounded-2xl border border-white/10 bg-zinc-900/40 p-12 text-center text-white/50">
+        <div className="mt-6 rounded-2xl border border-white/10 bg-gradient-to-b from-zinc-900/60 to-zinc-900/20 p-12 text-center text-white/50 shadow-[0_0_25px_rgba(0,0,0,0.3)]">
           No bonuses collected yet.
         </div>
       ) : (
-        <div className="mt-10 overflow-hidden rounded-2xl border border-white/10">
+        <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-zinc-900/60 to-zinc-900/20 shadow-[0_0_25px_rgba(0,0,0,0.3)]">
+          <div className="flex items-center gap-2 border-b border-white/5 bg-white/[0.02] px-5 py-4">
+            <Icon name="trophy" className="h-4 w-4 text-emerald-300" />
+            <span className="text-xs font-bold tracking-wide text-white/70 uppercase">
+              Bonus Entries
+            </span>
+            <span className="ml-auto rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-bold text-white/50">
+              {entries.length}
+            </span>
+          </div>
           <table className="w-full text-left text-sm">
             <thead className="bg-white/5 text-white/50 uppercase tracking-wide">
               <tr>
@@ -526,7 +565,7 @@ export function BonusHuntBoard({
                             setPayout(b.id, e.target.value);
                           }
                         }}
-                        className="w-24 rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-right text-white"
+                        className="w-24 rounded-lg border border-white/10 bg-zinc-900 px-2 py-1.5 text-right text-white focus:border-emerald-400/40 focus:outline-none"
                       />
                     </td>
                     <td className="px-6 py-3 text-right font-semibold text-emerald-300">
