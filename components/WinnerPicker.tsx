@@ -17,23 +17,20 @@ const ROLL_DURATION_MS = 4000;
 const CONFETTI_COLORS = ["#34d399", "#ffffff", "#fbbf24"];
 const CONFETTI_COUNT = 28;
 
-type Mode = "manual" | "kick";
-
 interface Participant {
   username: string;
   avatarUrl: string | null;
-  isSubscriber?: boolean;
-  messageCount?: number;
+  isSubscriber: boolean;
+  messageCount: number;
 }
 
 interface Winner {
   username: string;
   avatarUrl: string | null;
   messageCount?: number;
-  // Kick mode only: false means this pick didn't clear the activity
-  // threshold and was NOT recorded as a winner server-side — it's shown so
-  // the admin can see who it landed on, with a Reroll option. Always true
-  // (or omitted) for manual-mode picks, which have no activity concept.
+  // false means this pick didn't clear the activity threshold and was NOT
+  // recorded as a winner server-side — it's shown so the admin can see who
+  // it landed on, with a Reroll option.
   qualifiesActive?: boolean;
 }
 
@@ -59,7 +56,7 @@ interface GiveawayApiState {
 }
 
 // Real Kick avatar when we have one; a two-letter initials badge when we
-// don't (manual entries never have one) or the image 404s.
+// don't (fresh entries before the webhook fills it in) or the image 404s.
 function Avatar({
   username,
   avatarUrl,
@@ -91,7 +88,6 @@ function Avatar({
   );
 }
 
-// Kick-mode only — manual entries have no message history to show.
 function ActivityBadge({ messageCount }: { messageCount: number }) {
   const active = messageCount >= ACTIVE_MESSAGE_THRESHOLD;
   return (
@@ -110,26 +106,18 @@ function ActivityBadge({ messageCount }: { messageCount: number }) {
 
 export function WinnerPicker() {
   const confirm = useConfirm();
-  const [mode, setMode] = useState<Mode>("manual");
 
-  // Manual mode: typed names, no avatars, winners tracked only in this tab.
-  const [manualNames, setManualNames] = useState<string[]>([]);
-  const [draftName, setDraftName] = useState("");
-  const [manualWinners, setManualWinners] = useState<Winner[]>([]);
-
-  // Kick mode: settings + server-synced entries/winners.
   const [keyword, setKeyword] = useState("!giveaway");
   const [winnerCountInput, setWinnerCountInput] = useState("1");
   const [subscribersOnly, setSubscribersOnly] = useState(false);
   const [activeOnly, setActiveOnly] = useState(false);
   const [sessionActive, setSessionActive] = useState(false);
-  const [kickEntries, setKickEntries] = useState<Participant[]>([]);
-  const [kickWinners, setKickWinners] = useState<Winner[]>([]);
-  const [kickBusy, setKickBusy] = useState(false);
+  const [entries, setEntries] = useState<Participant[]>([]);
+  const [winners, setWinners] = useState<Winner[]>([]);
+  const [busy, setBusy] = useState(false);
   const [connectWarning, setConnectWarning] = useState<string | null>(null);
 
-  // Roll animation — mode-agnostic, drives off whatever draw() feeds it.
-  // One strip per winner being drawn (see ReelItem above).
+  // Roll animation. One strip per winner being drawn (see ReelItem above).
   const [rolling, setRolling] = useState(false);
   const [reels, setReels] = useState<ReelItem[][] | null>(null);
   const [revealed, setRevealed] = useState<Winner[] | null>(null);
@@ -159,42 +147,37 @@ export function WinnerPicker() {
       setSubscribersOnly(data.session.subscribersOnly);
       setActiveOnly(data.session.activeOnly);
     }
-    setKickEntries(data.entries);
-    setKickWinners(data.winners);
+    setEntries(data.entries);
+    setWinners(data.winners);
   }
 
-  // Poll while the Kick tab is open so entries/winners update live as chat
-  // messages come in (or another admin tab draws), without a manual refresh.
+  // Poll so entries/winners update live as chat messages come in (or
+  // another admin tab draws), without a manual refresh.
   useEffect(() => {
-    if (mode !== "kick") return;
     refreshGiveawayState();
     const interval = setInterval(refreshGiveawayState, 3000);
     return () => clearInterval(interval);
-  }, [mode]);
+  }, []);
 
   const winnerCount = Math.max(1, parseInt(winnerCountInput, 10) || 1);
-  const winners = mode === "kick" ? kickWinners : manualWinners;
   const wonUsernames = useMemo(() => new Set(winners.map((w) => w.username)), [winners]);
 
   // "Active only" is NOT a pool filter — everyone shows here normally and
   // stays eligible to be drawn. It only decides, after a draw, whether the
   // pick actually gets confirmed as a winner (see draw()/qualifiesActive).
-  const participants: Participant[] = useMemo(() => {
-    if (mode === "kick") {
-      return kickEntries.filter(
+  const participants: Participant[] = useMemo(
+    () =>
+      entries.filter(
         (e) => !wonUsernames.has(e.username) && (!subscribersOnly || e.isSubscriber)
-      );
-    }
-    return manualNames
-      .filter((n) => !wonUsernames.has(n))
-      .map((n) => ({ username: n, avatarUrl: null }));
-  }, [mode, kickEntries, manualNames, wonUsernames, subscribersOnly]);
+      ),
+    [entries, wonUsernames, subscribersOnly]
+  );
 
   // Auto-connects the Kick webhook on the server the first time this is
   // called (see the "start" action) — no separate setup step to click.
   async function startGiveaway() {
     if (!keyword.trim()) return;
-    setKickBusy(true);
+    setBusy(true);
     setConnectWarning(null);
     const res = await fetch("/api/admin/giveaway", {
       method: "POST",
@@ -210,50 +193,32 @@ export function WinnerPicker() {
     const data = await res.json().catch(() => null);
     if (data?.connectWarning) setConnectWarning(data.connectWarning);
     await refreshGiveawayState();
-    setKickBusy(false);
+    setBusy(false);
   }
 
   async function stopGiveaway() {
-    setKickBusy(true);
+    setBusy(true);
     await fetch("/api/admin/giveaway", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "stop" }),
     });
     await refreshGiveawayState();
-    setKickBusy(false);
+    setBusy(false);
   }
 
   async function resetAll() {
     if (!(await confirm("Reset everything? This clears participants and winners.", { danger: true }))) return;
-    if (mode === "kick") {
-      setKickBusy(true);
-      await fetch("/api/admin/giveaway", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "reset" }),
-      });
-      await refreshGiveawayState();
-      setKickBusy(false);
-    } else {
-      setManualNames([]);
-      setManualWinners([]);
-    }
+    setBusy(true);
+    await fetch("/api/admin/giveaway", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "reset" }),
+    });
+    await refreshGiveawayState();
+    setBusy(false);
     setReels(null);
     setRevealed(null);
-  }
-
-  function addNames(raw: string) {
-    const additions = raw
-      .split("\n")
-      .map((n) => n.trim())
-      .filter(Boolean);
-    if (additions.length === 0) return;
-    setManualNames((names) => [...names, ...additions]);
-  }
-
-  function removeParticipant(username: string) {
-    setManualNames((names) => names.filter((n) => n !== username));
   }
 
   const confetti = useMemo(
@@ -333,35 +298,22 @@ export function WinnerPicker() {
   async function draw(overrideCount?: number) {
     if (rolling || participants.length === 0) return;
 
-    if (mode === "kick") {
-      setKickBusy(true);
-      const res = await fetch("/api/admin/giveaway", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          overrideCount ? { action: "draw", count: overrideCount } : { action: "draw" }
-        ),
-      });
-      const data = await res.json().catch(() => null);
-      setKickBusy(false);
-      const picked: Winner[] = data?.winners ?? [];
-      if (picked.length === 0) return;
-      // Only picks that cleared the activity check were actually persisted
-      // server-side — mirror that here so the Winners panel matches the DB.
-      setKickWinners((w) => [...w, ...picked.filter((p) => p.qualifiesActive !== false)]);
-      runReelAnimation(participants, picked);
-    } else {
-      const count = overrideCount ?? winnerCount;
-      const shuffled = [...participants].sort(() => Math.random() - 0.5);
-      const picked = shuffled.slice(0, Math.min(count, shuffled.length)).map((p) => ({
-        username: p.username,
-        avatarUrl: null,
-        qualifiesActive: true,
-      }));
-      if (picked.length === 0) return;
-      setManualWinners((w) => [...w, ...picked]);
-      runReelAnimation(participants, picked);
-    }
+    setBusy(true);
+    const res = await fetch("/api/admin/giveaway", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        overrideCount ? { action: "draw", count: overrideCount } : { action: "draw" }
+      ),
+    });
+    const data = await res.json().catch(() => null);
+    setBusy(false);
+    const picked: Winner[] = data?.winners ?? [];
+    if (picked.length === 0) return;
+    // Only picks that cleared the activity check were actually persisted
+    // server-side — mirror that here so the Winners panel matches the DB.
+    setWinners((w) => [...w, ...picked.filter((p) => p.qualifiesActive !== false)]);
+    runReelAnimation(participants, picked);
   }
 
   return (
@@ -373,44 +325,26 @@ export function WinnerPicker() {
         </div>
         <div>
           <p className="flex items-center gap-1.5 text-xs font-bold tracking-[0.3em] text-emerald-400/70 uppercase">
-            <Icon name="bolt" className="h-3 w-3" />
-            Giveaway
+            <SocialIcon platform="kick" className="h-3 w-3" />
+            Kick Giveaway
           </p>
           <h1 className="animate-shimmer-text font-display bg-gradient-to-r from-white via-emerald-200 to-white bg-clip-text text-4xl text-transparent uppercase sm:text-5xl">
             Winner Roller
           </h1>
         </div>
-      </div>
-      {/* Mode tabs */}
-      <div className="mt-6 flex w-fit gap-1.5 rounded-xl border border-white/10 bg-zinc-900/60 p-1.5">
-        <button
-          type="button"
-          onClick={() => setMode("manual")}
-          className={`flex items-center gap-1.5 rounded-lg px-5 py-2.5 text-xs font-bold uppercase tracking-wide transition-all ${
-            mode === "manual"
-              ? "scale-105 bg-gradient-to-b from-emerald-300 to-emerald-500 text-black shadow-[0_0_20px_rgba(52,211,153,0.45)]"
-              : "text-white/50 hover:text-white"
-          }`}
-        >
-          <Icon name="list" className="h-3.5 w-3.5" />
-          Manual
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode("kick")}
-          className={`flex items-center gap-1.5 rounded-lg px-5 py-2.5 text-xs font-bold uppercase tracking-wide transition-all ${
-            mode === "kick"
-              ? "scale-105 bg-gradient-to-b from-emerald-300 to-emerald-500 text-black shadow-[0_0_20px_rgba(52,211,153,0.45)]"
-              : "text-white/50 hover:text-white"
-          }`}
-        >
-          <SocialIcon platform="kick" className="h-3.5 w-3.5" />
-          Kick Chat
-        </button>
+        {sessionActive ? (
+          <span className="ml-2 flex items-center gap-1.5 rounded-full bg-red-500/10 px-3 py-1.5 text-[10px] font-bold tracking-wide text-red-400 uppercase">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
+            </span>
+            Live
+          </span>
+        ) : null}
       </div>
 
       {/* Settings | Participants | Winners */}
-      <div className="mt-4 grid gap-5 lg:grid-cols-3">
+      <div className="mt-6 grid gap-5 lg:grid-cols-3">
         {/* Settings */}
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-zinc-900/60 to-zinc-900/20 shadow-[0_0_25px_rgba(0,0,0,0.3)]">
           <div className="flex items-center gap-2 border-b border-white/5 bg-white/[0.02] px-5 py-4">
@@ -418,158 +352,94 @@ export function WinnerPicker() {
             <span className="text-xs font-bold tracking-wide text-white/70 uppercase">
               Settings
             </span>
-            {mode === "kick" && sessionActive ? (
-              <span className="ml-auto flex items-center gap-1.5 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-red-400 uppercase">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
-                </span>
-                Live
-              </span>
-            ) : null}
           </div>
 
           <div className="space-y-4 p-5">
-            {mode === "kick" ? (
-              <>
-                <div>
-                  <label className="text-[10px] font-semibold tracking-wide text-white/40 uppercase">
-                    Keyword
-                  </label>
-                  <input
-                    value={keyword}
-                    onChange={(e) => setKeyword(e.target.value)}
-                    disabled={sessionActive}
-                    placeholder="!giveaway"
-                    className="mt-1 w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-emerald-400/40 focus:outline-none disabled:opacity-50"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-semibold tracking-wide text-white/40 uppercase">
-                    Number of winners
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={winnerCountInput}
-                    onChange={(e) => setWinnerCountInput(e.target.value)}
-                    disabled={sessionActive}
-                    className="mt-1 w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-emerald-400/40 focus:outline-none disabled:opacity-50"
-                  />
-                </div>
-                <label className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2.5 text-sm text-white/70">
-                  Subscribers only
-                  <input
-                    type="checkbox"
-                    checked={subscribersOnly}
-                    onChange={(e) => setSubscribersOnly(e.target.checked)}
-                    disabled={sessionActive}
-                    className="h-4 w-4 accent-emerald-400 disabled:opacity-50"
-                  />
-                </label>
-                <label className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2.5 text-sm text-white/70">
-                  <span className="flex items-center gap-1.5">
-                    Active only
-                    <span
-                      title={`Only entrants with ${ACTIVE_MESSAGE_THRESHOLD}+ chat messages during this giveaway are eligible.`}
-                      className="cursor-help text-white/30"
-                    >
-                      <Icon name="message" className="h-3 w-3" />
-                    </span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={activeOnly}
-                    onChange={(e) => setActiveOnly(e.target.checked)}
-                    disabled={sessionActive}
-                    className="h-4 w-4 accent-emerald-400 disabled:opacity-50"
-                  />
-                </label>
+            <div>
+              <label className="text-[10px] font-semibold tracking-wide text-white/40 uppercase">
+                Keyword
+              </label>
+              <input
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                disabled={sessionActive}
+                placeholder="!giveaway"
+                className="mt-1 w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-emerald-400/40 focus:outline-none disabled:opacity-50"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-semibold tracking-wide text-white/40 uppercase">
+                Number of winners
+              </label>
+              <input
+                type="number"
+                min={1}
+                value={winnerCountInput}
+                onChange={(e) => setWinnerCountInput(e.target.value)}
+                disabled={sessionActive}
+                className="mt-1 w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-emerald-400/40 focus:outline-none disabled:opacity-50"
+              />
+            </div>
+            <label className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2.5 text-sm text-white/70">
+              Subscribers only
+              <input
+                type="checkbox"
+                checked={subscribersOnly}
+                onChange={(e) => setSubscribersOnly(e.target.checked)}
+                disabled={sessionActive}
+                className="h-4 w-4 accent-emerald-400 disabled:opacity-50"
+              />
+            </label>
+            <label className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2.5 text-sm text-white/70">
+              <span className="flex items-center gap-1.5">
+                Active only
+                <span
+                  title={`Only entrants with ${ACTIVE_MESSAGE_THRESHOLD}+ chat messages during this giveaway are eligible.`}
+                  className="cursor-help text-white/30"
+                >
+                  <Icon name="message" className="h-3 w-3" />
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                checked={activeOnly}
+                onChange={(e) => setActiveOnly(e.target.checked)}
+                disabled={sessionActive}
+                className="h-4 w-4 accent-emerald-400 disabled:opacity-50"
+              />
+            </label>
 
-                {connectWarning ? (
-                  <p className="text-xs text-amber-400/80">
-                    Kick connection issue: {connectWarning}
-                  </p>
-                ) : null}
+            {connectWarning ? (
+              <p className="text-xs text-amber-400/80">
+                Kick connection issue: {connectWarning}
+              </p>
+            ) : null}
 
-                {sessionActive ? (
-                  <button
-                    type="button"
-                    onClick={stopGiveaway}
-                    disabled={kickBusy}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-400/30 px-3 py-2.5 text-xs font-bold text-red-300 hover:bg-red-400/10 disabled:opacity-50"
-                  >
-                    <Icon name="stop" className="h-3 w-3" />
-                    Stop Giveaway
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={startGiveaway}
-                    disabled={kickBusy || !keyword.trim()}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-400 px-3 py-2.5 text-xs font-bold text-black transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
-                  >
-                    <Icon name="bolt" className="h-3.5 w-3.5" />
-                    Start Giveaway
-                  </button>
-                )}
-                <p className="text-xs text-white/40">
-                  Viewers type{" "}
-                  <span className="font-semibold text-white/70">{keyword}</span>{" "}
-                  in chat to join.
-                </p>
-              </>
-            ) : (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  addNames(draftName);
-                  setDraftName("");
-                }}
-                className="space-y-3"
+            {sessionActive ? (
+              <button
+                type="button"
+                onClick={stopGiveaway}
+                disabled={busy}
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-400/30 px-3 py-2.5 text-xs font-bold text-red-300 hover:bg-red-400/10 disabled:opacity-50"
               >
-                <div>
-                  <label className="text-[10px] font-semibold tracking-wide text-white/40 uppercase">
-                    Number of winners
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={winnerCountInput}
-                    onChange={(e) => setWinnerCountInput(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-emerald-400/40 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-semibold tracking-wide text-white/40 uppercase">
-                    Add a name
-                  </label>
-                  <div className="mt-1 flex gap-2">
-                    <input
-                      value={draftName}
-                      onChange={(e) => setDraftName(e.target.value)}
-                      onPaste={(e) => {
-                        const pasted = e.clipboardData.getData("text");
-                        if (pasted.includes("\n")) {
-                          e.preventDefault();
-                          addNames(pasted);
-                          setDraftName("");
-                        }
-                      }}
-                      placeholder="Type or paste a list"
-                      className="min-w-0 flex-1 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-white/20 focus:border-emerald-400/40 focus:outline-none"
-                    />
-                    <button
-                      type="submit"
-                      disabled={!draftName.trim()}
-                      className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-white/60 hover:border-emerald-400/30 hover:text-emerald-300 disabled:opacity-30"
-                    >
-                      Add
-                    </button>
-                  </div>
-                </div>
-              </form>
+                <Icon name="stop" className="h-3 w-3" />
+                Stop Giveaway
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={startGiveaway}
+                disabled={busy || !keyword.trim()}
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-400 px-3 py-2.5 text-xs font-bold text-black transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+              >
+                <Icon name="bolt" className="h-3.5 w-3.5" />
+                Start Giveaway
+              </button>
             )}
+            <p className="text-xs text-white/40">
+              Viewers type <span className="font-semibold text-white/70">{keyword}</span> in chat
+              to join.
+            </p>
           </div>
         </div>
 
@@ -586,11 +456,7 @@ export function WinnerPicker() {
           </div>
           <div className="max-h-[28rem] flex-1 space-y-2 overflow-y-auto p-4">
             {participants.length === 0 ? (
-              <p className="p-2 text-sm text-white/30">
-                {mode === "kick"
-                  ? "Waiting for entries…"
-                  : "No participants yet — add names on the left."}
-              </p>
+              <p className="p-2 text-sm text-white/30">Waiting for entries…</p>
             ) : (
               participants.map((p) => (
                 <div
@@ -601,19 +467,7 @@ export function WinnerPicker() {
                   <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">
                     {p.username}
                   </span>
-                  {mode === "kick" ? (
-                    <ActivityBadge messageCount={p.messageCount ?? 0} />
-                  ) : null}
-                  {mode === "manual" ? (
-                    <button
-                      type="button"
-                      onClick={() => removeParticipant(p.username)}
-                      aria-label={`Remove ${p.username}`}
-                      className="shrink-0 rounded-full p-1 text-white/30 hover:bg-red-400/10 hover:text-red-300"
-                    >
-                      <Icon name="close" className="h-3.5 w-3.5" />
-                    </button>
-                  ) : null}
+                  <ActivityBadge messageCount={p.messageCount} />
                 </div>
               ))
             )}
@@ -646,9 +500,7 @@ export function WinnerPicker() {
                   <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">
                     {w.username}
                   </span>
-                  {mode === "kick" ? (
-                    <ActivityBadge messageCount={w.messageCount ?? 0} />
-                  ) : null}
+                  <ActivityBadge messageCount={w.messageCount ?? 0} />
                   <Icon name="crown" className="h-4 w-4 shrink-0 text-emerald-300" />
                 </div>
               ))
@@ -661,7 +513,7 @@ export function WinnerPicker() {
         <button
           type="button"
           onClick={() => draw()}
-          disabled={rolling || participants.length === 0 || (mode === "kick" && kickBusy)}
+          disabled={rolling || participants.length === 0 || busy}
           className="group relative flex items-center gap-2.5 rounded-2xl bg-gradient-to-b from-emerald-300 to-emerald-500 px-9 py-4 text-base font-bold text-black shadow-[0_0_35px_rgba(52,211,153,0.4)] transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
         >
           <span className="absolute inset-0 -z-10 rounded-2xl bg-emerald-400 opacity-0 blur-xl transition-opacity group-hover:opacity-60" />
@@ -802,7 +654,7 @@ export function WinnerPicker() {
                     onClick={() =>
                       draw(revealed.filter((w) => w.qualifiesActive === false).length)
                     }
-                    disabled={rolling || (mode === "kick" && kickBusy)}
+                    disabled={rolling || busy}
                     className="relative z-10 mx-auto mt-5 flex items-center justify-center gap-1.5 rounded-lg border border-amber-400/40 px-4 py-2 text-xs font-bold text-amber-300 hover:bg-amber-400/10 disabled:opacity-40"
                   >
                     <Icon name="dice" className="h-3.5 w-3.5" />
