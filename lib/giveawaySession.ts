@@ -26,6 +26,16 @@ export interface GiveawayWinner {
   messageCount: number;
 }
 
+// A single draw pick, before the activity check is applied. Everyone gets
+// drawn from the same pool regardless of the "Active only" setting — the
+// setting only decides whether a pick that turns out inactive gets
+// confirmed as a winner (qualifiesActive), so the admin can see exactly
+// who got picked and reroll the ones who didn't chat enough, instead of
+// silently never being eligible in the first place.
+export interface GiveawayDrawPick extends GiveawayWinner {
+  qualifiesActive: boolean;
+}
+
 export async function getGiveawaySession(): Promise<GiveawaySession> {
   const [rows] = await getPool().query<RowDataPacket[]>(
     `SELECT active, keyword, winner_count, subscribers_only, active_only, webhook_connected, started_at
@@ -103,22 +113,25 @@ export async function resetGiveawayState(): Promise<void> {
 }
 
 // Random, non-repeating draw: picks up to `count` entries that haven't
-// already won this session (optionally restricted to subscribers and/or to
-// entrants who cleared the chat-activity threshold) and records them in
-// giveaway_winners. Shuffled in JS, not SQL ORDER BY RAND() — fine at this
-// scale (a chat giveaway's entrant count, not a table scan) and keeps the
-// randomness source obvious.
+// already won this session (optionally restricted to subscribers) from the
+// FULL pool — "Active only" does not narrow who can be picked. Shuffled in
+// JS, not SQL ORDER BY RAND() — fine at this scale (a chat giveaway's
+// entrant count, not a table scan) and keeps the randomness source obvious.
+//
+// Only picks that clear the activity threshold (when activeOnly is on) get
+// inserted into giveaway_winners — an inactive pick is returned so the
+// admin can see who it landed on, but isn't recorded as a winner, leaving
+// it re-drawable on a reroll.
 export async function drawGiveawayWinners(
   count: number,
   subscribersOnly: boolean,
   activeOnly: boolean
-): Promise<GiveawayWinner[]> {
+): Promise<GiveawayDrawPick[]> {
   const pool = getPool();
   const [rows] = await pool.query<RowDataPacket[]>(
     `SELECT e.username, e.avatar_url, e.message_count FROM giveaway_entries e
      WHERE e.username NOT IN (SELECT username FROM giveaway_winners)
-       ${subscribersOnly ? "AND e.is_subscriber = 1" : ""}
-       ${activeOnly ? `AND e.message_count >= ${ACTIVE_MESSAGE_THRESHOLD}` : ""}`
+       ${subscribersOnly ? "AND e.is_subscriber = 1" : ""}`
   );
   const candidates: GiveawayWinner[] = rows.map((r) => ({
     username: r.username as string,
@@ -130,11 +143,15 @@ export async function drawGiveawayWinners(
     const j = Math.floor(Math.random() * (i + 1));
     [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
   }
-  const picked = candidates.slice(0, count);
+  const picked: GiveawayDrawPick[] = candidates.slice(0, count).map((p) => ({
+    ...p,
+    qualifiesActive: !activeOnly || p.messageCount >= ACTIVE_MESSAGE_THRESHOLD,
+  }));
 
-  if (picked.length > 0) {
+  const confirmed = picked.filter((p) => p.qualifiesActive);
+  if (confirmed.length > 0) {
     await pool.query("INSERT INTO giveaway_winners (username, avatar_url, message_count) VALUES ?", [
-      picked.map((p) => [p.username, p.avatarUrl, p.messageCount]),
+      confirmed.map((p) => [p.username, p.avatarUrl, p.messageCount]),
     ]);
   }
   return picked;

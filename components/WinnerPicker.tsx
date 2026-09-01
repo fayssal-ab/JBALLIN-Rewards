@@ -30,6 +30,11 @@ interface Winner {
   username: string;
   avatarUrl: string | null;
   messageCount?: number;
+  // Kick mode only: false means this pick didn't clear the activity
+  // threshold and was NOT recorded as a winner server-side — it's shown so
+  // the admin can see who it landed on, with a Reroll option. Always true
+  // (or omitted) for manual-mode picks, which have no activity concept.
+  qualifiesActive?: boolean;
 }
 
 // One reel strip per winner being drawn — only the landing card (index
@@ -171,19 +176,19 @@ export function WinnerPicker() {
   const winners = mode === "kick" ? kickWinners : manualWinners;
   const wonUsernames = useMemo(() => new Set(winners.map((w) => w.username)), [winners]);
 
+  // "Active only" is NOT a pool filter — everyone shows here normally and
+  // stays eligible to be drawn. It only decides, after a draw, whether the
+  // pick actually gets confirmed as a winner (see draw()/qualifiesActive).
   const participants: Participant[] = useMemo(() => {
     if (mode === "kick") {
       return kickEntries.filter(
-        (e) =>
-          !wonUsernames.has(e.username) &&
-          (!subscribersOnly || e.isSubscriber) &&
-          (!activeOnly || (e.messageCount ?? 0) >= ACTIVE_MESSAGE_THRESHOLD)
+        (e) => !wonUsernames.has(e.username) && (!subscribersOnly || e.isSubscriber)
       );
     }
     return manualNames
       .filter((n) => !wonUsernames.has(n))
       .map((n) => ({ username: n, avatarUrl: null }));
-  }, [mode, kickEntries, manualNames, wonUsernames, subscribersOnly, activeOnly]);
+  }, [mode, kickEntries, manualNames, wonUsernames, subscribersOnly]);
 
   // Auto-connects the Kick webhook on the server the first time this is
   // called (see the "start" action) — no separate setup step to click.
@@ -323,7 +328,9 @@ export function WinnerPicker() {
     }, ROLL_DURATION_MS + 150);
   }
 
-  async function draw() {
+  // overrideCount is set by the Reroll button to replace just the picks
+  // that failed the activity check, instead of a fresh full-size draw.
+  async function draw(overrideCount?: number) {
     if (rolling || participants.length === 0) return;
 
     if (mode === "kick") {
@@ -331,19 +338,25 @@ export function WinnerPicker() {
       const res = await fetch("/api/admin/giveaway", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "draw" }),
+        body: JSON.stringify(
+          overrideCount ? { action: "draw", count: overrideCount } : { action: "draw" }
+        ),
       });
       const data = await res.json().catch(() => null);
       setKickBusy(false);
       const picked: Winner[] = data?.winners ?? [];
       if (picked.length === 0) return;
-      setKickWinners((w) => [...w, ...picked]);
+      // Only picks that cleared the activity check were actually persisted
+      // server-side — mirror that here so the Winners panel matches the DB.
+      setKickWinners((w) => [...w, ...picked.filter((p) => p.qualifiesActive !== false)]);
       runReelAnimation(participants, picked);
     } else {
+      const count = overrideCount ?? winnerCount;
       const shuffled = [...participants].sort(() => Math.random() - 0.5);
-      const picked = shuffled.slice(0, Math.min(winnerCount, shuffled.length)).map((p) => ({
+      const picked = shuffled.slice(0, Math.min(count, shuffled.length)).map((p) => ({
         username: p.username,
         avatarUrl: null,
+        qualifiesActive: true,
       }));
       if (picked.length === 0) return;
       setManualWinners((w) => [...w, ...picked]);
@@ -645,7 +658,7 @@ export function WinnerPicker() {
       <div className="mt-5 flex flex-wrap gap-3">
         <button
           type="button"
-          onClick={draw}
+          onClick={() => draw()}
           disabled={rolling || participants.length === 0 || (mode === "kick" && kickBusy)}
           className="flex items-center gap-2 rounded-xl bg-emerald-400 px-7 py-3.5 text-sm font-bold text-black shadow-[0_0_24px_rgba(52,211,153,0.3)] transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
         >
@@ -712,7 +725,9 @@ export function WinnerPicker() {
                           style={{ width: ITEM_WIDTH }}
                           className={`flex ${reels.length > 1 ? "h-14" : "h-24"} shrink-0 items-center justify-center gap-2 rounded-xl border px-3 text-center ${reels.length > 1 ? "text-sm" : "text-base"} font-semibold ${
                             !rolling && i === WINNER_INDEX
-                              ? "border-emerald-400/60 bg-emerald-400/10 text-emerald-300"
+                              ? revealed?.[reelIndex]?.qualifiesActive === false
+                                ? "border-amber-400/60 bg-amber-400/10 text-amber-300"
+                                : "border-emerald-400/60 bg-emerald-400/10 text-emerald-300"
                               : "border-white/10 bg-zinc-900/70 text-white/70"
                           }`}
                         >
@@ -755,17 +770,40 @@ export function WinnerPicker() {
                 </p>
                 <div className="relative z-10 mt-4 space-y-3">
                   {revealed.map((w) => (
-                    <div
-                      key={w.username}
-                      className="flex items-center justify-center gap-3"
-                    >
-                      <Avatar username={w.username} avatarUrl={w.avatarUrl} size={40} />
-                      <span className="font-display animate-winner-pop text-3xl uppercase text-white sm:text-4xl">
-                        {w.username}
-                      </span>
+                    <div key={w.username} className="flex flex-col items-center gap-1">
+                      <div className="flex items-center justify-center gap-3">
+                        <Avatar username={w.username} avatarUrl={w.avatarUrl} size={40} />
+                        <span
+                          className={`font-display animate-winner-pop text-3xl uppercase sm:text-4xl ${
+                            w.qualifiesActive === false ? "text-white/40" : "text-white"
+                          }`}
+                        >
+                          {w.username}
+                        </span>
+                      </div>
+                      {w.qualifiesActive === false ? (
+                        <p className="flex items-center gap-1 text-xs font-semibold text-amber-400">
+                          <Icon name="message" className="h-3 w-3" />
+                          Not active enough in chat — needs a reroll
+                        </p>
+                      ) : null}
                     </div>
                   ))}
                 </div>
+
+                {revealed.some((w) => w.qualifiesActive === false) ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      draw(revealed.filter((w) => w.qualifiesActive === false).length)
+                    }
+                    disabled={rolling || (mode === "kick" && kickBusy)}
+                    className="relative z-10 mx-auto mt-5 flex items-center justify-center gap-1.5 rounded-lg border border-amber-400/40 px-4 py-2 text-xs font-bold text-amber-300 hover:bg-amber-400/10 disabled:opacity-40"
+                  >
+                    <Icon name="dice" className="h-3.5 w-3.5" />
+                    Reroll {revealed.filter((w) => w.qualifiesActive === false).length} Inactive
+                  </button>
+                ) : null}
               </div>
             ) : null}
           </div>

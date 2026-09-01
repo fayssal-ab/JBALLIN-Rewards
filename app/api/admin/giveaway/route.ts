@@ -18,7 +18,7 @@ type Body =
   | { action: "start"; keyword: string; winnerCount: number; subscribersOnly: boolean; activeOnly: boolean }
   | { action: "stop" }
   | { action: "reset" }
-  | { action: "draw" };
+  | { action: "draw"; count?: number };
 
 // Looks up the channel and subscribes to chat.message.sent. Requires
 // KICK_CLIENT_ID/KICK_CLIENT_SECRET to be set and the webhook URL
@@ -78,7 +78,10 @@ export async function POST(request: NextRequest) {
       break;
     case "draw": {
       const session = await getGiveawaySession();
-      const winners = await drawGiveawayWinners(session.winnerCount, session.subscribersOnly, session.activeOnly);
+      // count overrides session.winnerCount for a reroll — replacing just
+      // the picks that failed the activity check, not a fresh full draw.
+      const count = body.count ? Math.max(1, Math.floor(body.count)) : session.winnerCount;
+      const winners = await drawGiveawayWinners(count, session.subscribersOnly, session.activeOnly);
       return NextResponse.json({ ok: true, winners });
     }
     default:
