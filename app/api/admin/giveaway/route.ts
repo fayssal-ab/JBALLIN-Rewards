@@ -4,14 +4,21 @@ import { isAdminRequest } from "@/lib/admin";
 import {
   getGiveawaySession,
   getGiveawayEntries,
+  getGiveawayWinners,
   startGiveawaySession,
   stopGiveawaySession,
+  resetGiveawayState,
+  drawGiveawayWinners,
   markWebhookConnected,
 } from "@/lib/giveawaySession";
 import { getBroadcasterUserId, subscribeToChatMessages } from "@/lib/kick";
 import { KICK_CHANNEL } from "@/lib/constants";
 
-type Body = { action: "start"; keyword: string } | { action: "stop" };
+type Body =
+  | { action: "start"; keyword: string; winnerCount: number; subscribersOnly: boolean }
+  | { action: "stop" }
+  | { action: "reset" }
+  | { action: "draw" };
 
 // Looks up the channel and subscribes to chat.message.sent. Requires
 // KICK_CLIENT_ID/KICK_CLIENT_SECRET to be set and the webhook URL
@@ -55,12 +62,24 @@ export async function POST(request: NextRequest) {
         connectWarning = await connectKickWebhookOnce();
       }
 
-      await startGiveawaySession(body.keyword.trim());
+      await startGiveawaySession({
+        keyword: body.keyword.trim(),
+        winnerCount: Math.max(1, Math.floor(body.winnerCount) || 1),
+        subscribersOnly: Boolean(body.subscribersOnly),
+      });
       return NextResponse.json({ ok: true, connectWarning });
     }
     case "stop":
       await stopGiveawaySession();
       break;
+    case "reset":
+      await resetGiveawayState();
+      break;
+    case "draw": {
+      const session = await getGiveawaySession();
+      const winners = await drawGiveawayWinners(session.winnerCount, session.subscribersOnly);
+      return NextResponse.json({ ok: true, winners });
+    }
     default:
       return NextResponse.json({ error: "unknown_action" }, { status: 400 });
   }
@@ -73,6 +92,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const [session, entries] = await Promise.all([getGiveawaySession(), getGiveawayEntries()]);
-  return NextResponse.json({ session, entries });
+  const [session, entries, winners] = await Promise.all([
+    getGiveawaySession(),
+    getGiveawayEntries(),
+    getGiveawayWinners(),
+  ]);
+  return NextResponse.json({ session, entries, winners });
 }

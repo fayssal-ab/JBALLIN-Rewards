@@ -12,7 +12,13 @@ export const dynamic = "force-dynamic";
 
 interface ChatMessageSentPayload {
   content: string;
-  sender: { username: string };
+  sender: {
+    username: string;
+    profile_picture?: string | null;
+    identity?: {
+      badges?: { type: string }[];
+    };
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -44,8 +50,11 @@ export async function POST(request: NextRequest) {
   }
 
   const payload = JSON.parse(rawBody) as ChatMessageSentPayload;
+  const avatarUrl = payload.sender.profile_picture ?? null;
+  const isSubscriber = payload.sender.identity?.badges?.some((b) => b.type === "subscriber") ?? false;
+
   await Promise.all([
-    recordGiveawayEntryIfMatches(payload.sender.username, payload.content),
+    recordGiveawayEntryIfMatches(payload.sender.username, payload.content, avatarUrl, isSubscriber),
     recordBalanceGuessIfActive(payload.sender.username, payload.content),
   ]);
 
