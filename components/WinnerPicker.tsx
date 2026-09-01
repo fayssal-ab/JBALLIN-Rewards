@@ -366,27 +366,29 @@ export function WinnerPicker() {
 
   return (
     <div>
-      <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/10">
-          <Icon name="dice" className="h-5 w-5 text-emerald-300" />
+      <div className="flex items-center gap-4">
+        <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-emerald-400/40 bg-gradient-to-br from-emerald-400/20 to-emerald-400/5 shadow-[0_0_30px_rgba(52,211,153,0.25)]">
+          <div className="animate-glow-pulse absolute inset-0 rounded-2xl" />
+          <Icon name="dice" className="h-7 w-7 text-emerald-300" />
         </div>
         <div>
-          <p className="text-xs tracking-[0.3em] text-white/40 uppercase">
+          <p className="flex items-center gap-1.5 text-xs font-bold tracking-[0.3em] text-emerald-400/70 uppercase">
+            <Icon name="bolt" className="h-3 w-3" />
             Giveaway
           </p>
-          <h1 className="font-display text-3xl uppercase text-white sm:text-4xl">
+          <h1 className="animate-shimmer-text font-display bg-gradient-to-r from-white via-emerald-200 to-white bg-clip-text text-4xl text-transparent uppercase sm:text-5xl">
             Winner Roller
           </h1>
         </div>
       </div>
       {/* Mode tabs */}
-      <div className="mt-6 flex w-fit gap-1 rounded-xl border border-white/10 bg-zinc-900/60 p-1">
+      <div className="mt-6 flex w-fit gap-1.5 rounded-xl border border-white/10 bg-zinc-900/60 p-1.5">
         <button
           type="button"
           onClick={() => setMode("manual")}
-          className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-wide transition-all ${
+          className={`flex items-center gap-1.5 rounded-lg px-5 py-2.5 text-xs font-bold uppercase tracking-wide transition-all ${
             mode === "manual"
-              ? "bg-emerald-400 text-black shadow-[0_0_16px_rgba(52,211,153,0.35)]"
+              ? "scale-105 bg-gradient-to-b from-emerald-300 to-emerald-500 text-black shadow-[0_0_20px_rgba(52,211,153,0.45)]"
               : "text-white/50 hover:text-white"
           }`}
         >
@@ -396,9 +398,9 @@ export function WinnerPicker() {
         <button
           type="button"
           onClick={() => setMode("kick")}
-          className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-wide transition-all ${
+          className={`flex items-center gap-1.5 rounded-lg px-5 py-2.5 text-xs font-bold uppercase tracking-wide transition-all ${
             mode === "kick"
-              ? "bg-emerald-400 text-black shadow-[0_0_16px_rgba(52,211,153,0.35)]"
+              ? "scale-105 bg-gradient-to-b from-emerald-300 to-emerald-500 text-black shadow-[0_0_20px_rgba(52,211,153,0.45)]"
               : "text-white/50 hover:text-white"
           }`}
         >
@@ -410,9 +412,9 @@ export function WinnerPicker() {
       {/* Settings | Participants | Winners */}
       <div className="mt-4 grid gap-5 lg:grid-cols-3">
         {/* Settings */}
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/40">
-          <div className="flex items-center gap-2 border-b border-white/5 px-5 py-4">
-            <Icon name="bolt" className="h-4 w-4 text-white/50" />
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-zinc-900/60 to-zinc-900/20 shadow-[0_0_25px_rgba(0,0,0,0.3)]">
+          <div className="flex items-center gap-2 border-b border-white/5 bg-white/[0.02] px-5 py-4">
+            <Icon name="bolt" className="h-4 w-4 text-emerald-300" />
             <span className="text-xs font-bold tracking-wide text-white/70 uppercase">
               Settings
             </span>
@@ -572,9 +574,9 @@ export function WinnerPicker() {
         </div>
 
         {/* Participants */}
-        <div className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/40">
-          <div className="flex items-center gap-2 border-b border-white/5 px-5 py-4">
-            <Icon name="users" className="h-4 w-4 text-white/50" />
+        <div className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-zinc-900/60 to-zinc-900/20 shadow-[0_0_25px_rgba(0,0,0,0.3)]">
+          <div className="flex items-center gap-2 border-b border-white/5 bg-white/[0.02] px-5 py-4">
+            <Icon name="users" className="h-4 w-4 text-emerald-300" />
             <span className="text-xs font-bold tracking-wide text-white/70 uppercase">
               Participants
             </span>
@@ -619,8 +621,8 @@ export function WinnerPicker() {
         </div>
 
         {/* Winners */}
-        <div className="flex flex-col overflow-hidden rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-400/[0.05] to-transparent">
-          <div className="flex items-center gap-2 border-b border-white/5 px-5 py-4">
+        <div className="animate-glow-pulse flex flex-col overflow-hidden rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-400/10 to-transparent shadow-[0_0_25px_rgba(52,211,153,0.1)]">
+          <div className="flex items-center gap-2 border-b border-white/5 bg-white/[0.02] px-5 py-4">
             <Icon name="trophy" className="h-4 w-4 text-emerald-300" />
             <span className="text-xs font-bold tracking-wide text-white/70 uppercase">
               Winners
@@ -655,14 +657,15 @@ export function WinnerPicker() {
         </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-3">
+      <div className="mt-6 flex flex-wrap items-center gap-4">
         <button
           type="button"
           onClick={() => draw()}
           disabled={rolling || participants.length === 0 || (mode === "kick" && kickBusy)}
-          className="flex items-center gap-2 rounded-xl bg-emerald-400 px-7 py-3.5 text-sm font-bold text-black shadow-[0_0_24px_rgba(52,211,153,0.3)] transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+          className="group relative flex items-center gap-2.5 rounded-2xl bg-gradient-to-b from-emerald-300 to-emerald-500 px-9 py-4 text-base font-bold text-black shadow-[0_0_35px_rgba(52,211,153,0.4)] transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
         >
-          <Icon name="dice" className={`h-4 w-4 ${rolling ? "animate-spin" : ""}`} />
+          <span className="absolute inset-0 -z-10 rounded-2xl bg-emerald-400 opacity-0 blur-xl transition-opacity group-hover:opacity-60" />
+          <Icon name="dice" className={`h-5 w-5 ${rolling ? "animate-spin" : ""}`} />
           {rolling ? "Rolling…" : `Draw ${winnerCount > 1 ? `${winnerCount} Winners` : "Winner"}`}
         </button>
         <button
@@ -675,21 +678,22 @@ export function WinnerPicker() {
         </button>
       </div>
 
-      {/* Rolls inline in the page, right where the reel already sits in the
-          layout — no fixed backdrop, no blur, nothing else dims. Just this
-          section appearing/updating in place. */}
+      {/* Centered on screen so it's the obvious focal point when it fires —
+          but NO backdrop dim/blur behind it. Everything else on the page
+          stays fully visible; only this panel pops, on its own glow. */}
       {reels ? (
-        <div className="mt-6 max-w-2xl">
-          <div className="relative">
+        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-6">
+          <div className="pointer-events-auto relative w-full max-w-2xl">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs font-bold tracking-[0.3em] text-white/40 uppercase">
+              <span className="flex items-center gap-1.5 text-xs font-bold tracking-[0.3em] text-emerald-300 uppercase">
+                <Icon name="dice" className={`h-3.5 w-3.5 ${rolling ? "animate-spin" : ""}`} />
                 {rolling ? "Rolling…" : "Roll Result"}
               </span>
               <button
                 type="button"
                 onClick={closeRollOverlay}
                 aria-label="Close"
-                className="rounded-full border border-white/10 p-1.5 text-white/40 hover:border-white/30 hover:text-white"
+                className="rounded-full border border-white/10 bg-zinc-950 p-1.5 text-white/40 hover:border-white/30 hover:text-white"
               >
                 <Icon name="close" className="h-3.5 w-3.5" />
               </button>
@@ -709,9 +713,9 @@ export function WinnerPicker() {
                   ) : null}
                   <div
                     ref={reelIndex === 0 ? viewportRef : undefined}
-                    className={`relative ${reels.length > 1 ? "h-20" : "h-32"} overflow-hidden rounded-2xl border border-emerald-400/30 bg-zinc-900/80 shadow-[0_0_40px_rgba(52,211,153,0.15)]`}
+                    className={`relative ${reels.length > 1 ? "h-20" : "h-36"} overflow-hidden rounded-2xl border-2 border-emerald-400/50 bg-zinc-950 shadow-[0_0_50px_rgba(52,211,153,0.35)]`}
                   >
-                    <div className="pointer-events-none absolute inset-y-0 left-1/2 z-10 w-0.5 -translate-x-1/2 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                    <div className="pointer-events-none absolute inset-y-0 left-1/2 z-10 w-1 -translate-x-1/2 bg-emerald-400 shadow-[0_0_16px_rgba(52,211,153,1)]" />
                     <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-full bg-gradient-to-r from-zinc-950 via-transparent to-zinc-950" />
                     <div
                       className="flex h-full items-center gap-2.5 px-2 transition-transform ease-out"
@@ -749,7 +753,7 @@ export function WinnerPicker() {
             </div>
 
             {revealed ? (
-              <div className="animate-glow-pulse relative mt-6 overflow-hidden rounded-2xl border border-emerald-400/50 bg-gradient-to-b from-emerald-400/10 to-emerald-400/5 p-8 text-center">
+              <div className="animate-glow-pulse relative mt-6 overflow-hidden rounded-2xl border-2 border-emerald-400/60 bg-gradient-to-b from-zinc-950 via-emerald-400/10 to-zinc-950 p-8 text-center shadow-[0_0_60px_rgba(52,211,153,0.35)]">
                 {confetti.map((c) => (
                   <span
                     key={c.id}
