@@ -793,6 +793,25 @@ export function WinnerPicker() {
                   Each spin draws one winner — they stay on the wheel after winning. Remove
                   someone yourself with the × next to their name.
                 </p>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => draw()}
+                    disabled={wheelSpinning || participants.length === 0}
+                    className="group relative flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-gradient-to-b from-emerald-300 to-emerald-500 px-3 py-2.5 text-xs font-bold text-black transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                  >
+                    <Icon name="dice" className={`h-3.5 w-3.5 ${wheelSpinning ? "animate-spin" : ""}`} />
+                    {wheelSpinning ? "Spinning…" : "Spin the Wheel"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={resetAll}
+                    disabled={wheelSpinning}
+                    className="rounded-lg border border-red-400/30 px-3 py-2.5 text-xs font-bold text-red-300 hover:bg-red-400/10 disabled:opacity-40"
+                  >
+                    Reset
+                  </button>
+                </div>
               </form>
             )}
           </div>
@@ -863,82 +882,79 @@ export function WinnerPicker() {
           </div>
         </div>
 
-        {/* Winners */}
-        <div className="animate-glow-pulse flex flex-col overflow-hidden rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-400/10 to-transparent shadow-[0_0_25px_rgba(52,211,153,0.1)]">
-          <div className="flex items-center gap-2 border-b border-white/5 bg-white/[0.02] px-5 py-4">
-            <Icon name="trophy" className="h-4 w-4 text-emerald-300" />
-            <span className="text-xs font-bold tracking-wide text-white/70 uppercase">
-              Winners
-            </span>
-            <span className="ml-auto rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
-              {winners.length}
-            </span>
-          </div>
-          <div className="max-h-[28rem] flex-1 space-y-2 overflow-y-auto p-4">
-            {winners.length === 0 ? (
-              <p className="p-2 text-sm text-white/30">
-                Nobody drawn yet — click {mode === "kick" ? "Draw Winner" : "Spin"} below.
-              </p>
-            ) : (
-              winners.map((w, i) => (
-                <div
-                  key={`${w.username}-${i}`}
-                  className="flex items-center gap-3 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3.5 py-2.5"
-                >
-                  <Avatar username={w.username} avatarUrl={w.avatarUrl} size={32} />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">
-                    {w.username}
-                  </span>
-                  {mode === "kick" ? (
+        {/* Winners (Kick) / Wheel (Manual) — the wheel takes this slot for
+            Manual mode instead of a separate list below, since the popup
+            reveal already announces each winner as they're drawn. */}
+        {mode === "kick" ? (
+          <div className="animate-glow-pulse flex flex-col overflow-hidden rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-400/10 to-transparent shadow-[0_0_25px_rgba(52,211,153,0.1)]">
+            <div className="flex items-center gap-2 border-b border-white/5 bg-white/[0.02] px-5 py-4">
+              <Icon name="trophy" className="h-4 w-4 text-emerald-300" />
+              <span className="text-xs font-bold tracking-wide text-white/70 uppercase">
+                Winners
+              </span>
+              <span className="ml-auto rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                {winners.length}
+              </span>
+            </div>
+            <div className="max-h-[28rem] flex-1 space-y-2 overflow-y-auto p-4">
+              {winners.length === 0 ? (
+                <p className="p-2 text-sm text-white/30">
+                  Nobody drawn yet — click Draw Winner below.
+                </p>
+              ) : (
+                winners.map((w, i) => (
+                  <div
+                    key={`${w.username}-${i}`}
+                    className="flex items-center gap-3 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3.5 py-2.5"
+                  >
+                    <Avatar username={w.username} avatarUrl={w.avatarUrl} size={32} />
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">
+                      {w.username}
+                    </span>
                     <ActivityBadge messageCount={w.messageCount ?? 0} />
-                  ) : null}
-                  <Icon name="crown" className="h-4 w-4 shrink-0 text-emerald-300" />
-                </div>
-              ))
-            )}
+                    <Icon name="crown" className="h-4 w-4 shrink-0 text-emerald-300" />
+                  </div>
+                ))
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-zinc-900/60 to-zinc-900/20 shadow-[0_0_25px_rgba(0,0,0,0.3)]">
+            <div className="flex items-center gap-2 border-b border-white/5 bg-white/[0.02] px-5 py-4">
+              <Icon name="target" className="h-4 w-4 text-emerald-300" />
+              <span className="text-xs font-bold tracking-wide text-white/70 uppercase">
+                Wheel
+              </span>
+            </div>
+            <div className="flex flex-1 items-center justify-center p-5">
+              <NamesWheel names={wheelNames} rotation={wheelRotation} spinning={wheelSpinning} />
+            </div>
+          </div>
+        )}
       </div>
 
-      {mode === "manual" ? (
-        <div className="mx-auto mt-6 max-w-md">
-          <NamesWheel
-            names={wheelNames}
-            rotation={wheelRotation}
-            spinning={wheelSpinning}
-          />
+      {mode === "kick" ? (
+        <div className="mt-6 flex flex-wrap items-center gap-4">
+          <button
+            type="button"
+            onClick={() => draw()}
+            disabled={rolling || participants.length === 0 || kickBusy}
+            className="group relative flex items-center gap-2.5 rounded-2xl bg-gradient-to-b from-emerald-300 to-emerald-500 px-9 py-4 text-base font-bold text-black shadow-[0_0_35px_rgba(52,211,153,0.4)] transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+          >
+            <span className="absolute inset-0 -z-10 rounded-2xl bg-emerald-400 opacity-0 blur-xl transition-opacity group-hover:opacity-60" />
+            <Icon name="dice" className={`h-5 w-5 ${rolling ? "animate-spin" : ""}`} />
+            {rolling ? "Rolling…" : `Draw ${winnerCount > 1 ? `${winnerCount} Winners` : "Winner"}`}
+          </button>
+          <button
+            type="button"
+            onClick={resetAll}
+            disabled={rolling}
+            className="rounded-xl border border-red-400/30 px-5 py-3.5 text-sm font-bold text-red-300 hover:bg-red-400/10 disabled:opacity-40"
+          >
+            Reset
+          </button>
         </div>
       ) : null}
-
-      <div className="mt-6 flex flex-wrap items-center gap-4">
-        <button
-          type="button"
-          onClick={() => draw()}
-          disabled={rolling || wheelSpinning || participants.length === 0 || (mode === "kick" && kickBusy)}
-          className="group relative flex items-center gap-2.5 rounded-2xl bg-gradient-to-b from-emerald-300 to-emerald-500 px-9 py-4 text-base font-bold text-black shadow-[0_0_35px_rgba(52,211,153,0.4)] transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
-        >
-          <span className="absolute inset-0 -z-10 rounded-2xl bg-emerald-400 opacity-0 blur-xl transition-opacity group-hover:opacity-60" />
-          <Icon
-            name="dice"
-            className={`h-5 w-5 ${rolling || wheelSpinning ? "animate-spin" : ""}`}
-          />
-          {mode === "kick"
-            ? rolling
-              ? "Rolling…"
-              : `Draw ${winnerCount > 1 ? `${winnerCount} Winners` : "Winner"}`
-            : wheelSpinning
-              ? "Spinning…"
-              : "Spin the Wheel"}
-        </button>
-        <button
-          type="button"
-          onClick={resetAll}
-          disabled={rolling || wheelSpinning}
-          className="rounded-xl border border-red-400/30 px-5 py-3.5 text-sm font-bold text-red-300 hover:bg-red-400/10 disabled:opacity-40"
-        >
-          Reset
-        </button>
-      </div>
 
       {/* Centered on screen so it's the obvious focal point when it fires —
           but NO backdrop dim/blur behind it. Everything else on the page
