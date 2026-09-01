@@ -4,6 +4,8 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
+import { GlobalAdminPanel } from "@/components/GlobalAdminPanel";
+import { isAdminSession } from "@/lib/admin";
 import "./globals.css";
 
 // Bold, energetic comic-style display face — replaces Anton everywhere
@@ -68,12 +70,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const isAdmin = await isAdminSession();
+
   return (
     <html lang="en" className={`${bangers.variable} ${righteous.variable} ${inter.variable}`}>
       <body className="relative font-sans">
         <AnimatedBackground />
         <SiteHeader />
+        {isAdmin ? <GlobalAdminPanel /> : null}
         <ConfirmProvider>
           <main>{children}</main>
         </ConfirmProvider>
