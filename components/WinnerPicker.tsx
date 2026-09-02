@@ -162,16 +162,35 @@ function NamesWheel({
             : "none",
         }}
       >
-        {names.map((name, i) => (
-          <div key={i} className="absolute inset-0" style={{ transform: `rotate(${i * wedgeAngle + wedgeAngle / 2}deg)` }}>
-            <span
-              className="absolute top-[9%] left-1/2 max-w-[38%] -translate-x-1/2 truncate text-xs font-bold text-white sm:text-sm"
-              style={{ textShadow: "0 1px 2px rgba(0,0,0,0.9), 0 0 6px rgba(0,0,0,0.6)" }}
+        {names.map((name, i) => {
+          const angle = i * wedgeAngle + wedgeAngle / 2;
+          return (
+            // A zero-width "spoke" pivoting at the wheel's own center, swept
+            // to point at this wedge — the label then rotates 90° again
+            // relative to that spoke so it reads radially (center→rim)
+            // instead of tangentially. Tangential text is what was wrapping
+            // long names around the rim instead of just truncating them.
+            <div
+              key={i}
+              className="absolute top-1/2 left-1/2 h-1/2 w-0"
+              style={{ transform: `rotate(${angle}deg)`, transformOrigin: "top" }}
             >
-              {name}
-            </span>
-          </div>
-        ))}
+              <span
+                className="absolute top-[70%] left-0 -translate-y-1/2 text-[10px] font-bold text-white sm:text-xs"
+                style={{
+                  writingMode: "vertical-rl",
+                  textOrientation: "mixed",
+                  transform: "rotate(180deg)",
+                  maxHeight: "86px",
+                  overflow: "hidden",
+                  textShadow: "0 1px 2px rgba(0,0,0,0.9), 0 0 6px rgba(0,0,0,0.6)",
+                }}
+              >
+                {name}
+              </span>
+            </div>
+          );
+        })}
       </div>
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-emerald-400/60 bg-zinc-950 shadow-[0_0_20px_rgba(52,211,153,0.5)]">
