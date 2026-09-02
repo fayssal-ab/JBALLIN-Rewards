@@ -456,8 +456,14 @@ export function BonusHuntBoard({
 
       {/* Add entry — kept above the list so it stays reachable without
           scrolling once the hunt has a lot of entries. */}
-      <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-zinc-900/60 to-zinc-900/20 shadow-[0_0_25px_rgba(0,0,0,0.3)]">
-        <div className="flex items-center gap-2 border-b border-white/5 bg-white/[0.02] px-5 py-4">
+      <div className="mt-6 rounded-2xl border border-white/10 bg-gradient-to-b from-zinc-900/60 to-zinc-900/20 shadow-[0_0_25px_rgba(0,0,0,0.3)]">
+        {/* No overflow-hidden on this card — SlotNameInput's autocomplete
+            dropdown is absolutely positioned below the input and needs to
+            extend past the card's own bounds; clipping the card would clip
+            the dropdown too. rounded-t-2xl on the header keeps its top
+            corners looking right without relying on the parent to clip
+            them. */}
+        <div className="flex items-center gap-2 rounded-t-2xl border-b border-white/5 bg-white/[0.02] px-5 py-4">
           <Icon name="box" className="h-4 w-4 text-emerald-300" />
           <span className="text-xs font-bold tracking-wide text-white/70 uppercase">
             Add Bonus
