@@ -47,13 +47,6 @@
     font-weight: 500;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Default arrow from the Plants vs Zombies cursor pack (public/curseur/)
-       — the pack's .ani files (Sun, Spinning Peashooter) are animated
-       Windows cursors with no browser support at all in CSS `cursor`, so
-       only this static one is usable here. Re-exported as PNG at a sane
-       size with a matching hotspot. The hover cursor below is a separate,
-       plain hand shape in the same gold tone — not from this pack. */
-    cursor: url("/curseur/pointer.png") 1 0, auto;
   }
 
   * {
@@ -62,29 +55,6 @@
 
   a {
     color: inherit;
-  }
-
-  /* A plain pointing-hand shape (not the PvZ glove) in the same gold tone
-     as the default arrow, so the two read as one matching cursor set
-     instead of two different characters' hands. Cropped/rendered from the
-     Noto Color Emoji glyph, which already uses this gold skin tone by
-     default — hotspot sits at the fingertip, the point that actually
-     indicates what's under the cursor. */
-  a,
-  button,
-  [role="button"],
-  input,
-  select,
-  textarea,
-  label {
-    cursor: url("/curseur/hand.png") 14 1, pointer;
-  }
-
-  /* The custom cursor's big hand makes it hard to see/hit a number input's
-     tiny native up/down spin buttons — fall back to the normal system
-     cursor there so incrementing actually feels precise. */
-  input[type="number"] {
-    cursor: auto;
   }
 }
 
