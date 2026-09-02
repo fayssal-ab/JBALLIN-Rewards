@@ -7,6 +7,13 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       { hostname: "i.ytimg.com" },
+      // TypeShit — the real merch brand (see CLAUDE.md), Printful-fulfilled
+      // via Shopify. Product images are served off the custom domain's own
+      // /cdn/shop/ path rather than cdn.shopify.com, but allow that too in
+      // case a future item links a product image straight from Shopify's
+      // own CDN.
+      { hostname: "typeshit.net" },
+      { hostname: "cdn.shopify.com" },
     ],
   },
   async headers() {

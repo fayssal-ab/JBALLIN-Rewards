@@ -22,14 +22,23 @@ export default async function StorePage() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-32">
       <div className="text-center">
-        <p className="text-xs tracking-[0.3em] text-white/40 uppercase">
-          Official Store
-        </p>
-        <h1 className="font-display animate-shimmer-text mt-2 bg-gradient-to-r from-white via-emerald-300 to-white bg-clip-text text-4xl uppercase text-transparent sm:text-5xl">
-          JBALLIN Store
-        </h1>
+        <div className="flex items-center justify-center gap-4">
+          <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-emerald-400/40 bg-gradient-to-br from-emerald-400/20 to-emerald-400/5 shadow-[0_0_30px_rgba(52,211,153,0.25)]">
+            <div className="animate-glow-pulse absolute inset-0 rounded-2xl" />
+            <Icon name="shirt" className="h-7 w-7 text-emerald-300" />
+          </div>
+          <div className="text-left">
+            <p className="flex items-center gap-1.5 text-xs font-bold tracking-[0.3em] text-emerald-400/70 uppercase">
+              <Icon name="bolt" className="h-3 w-3" />
+              Official Store
+            </p>
+            <h1 className="animate-shimmer-text font-display bg-gradient-to-r from-white via-emerald-200 to-white bg-clip-text text-4xl text-transparent uppercase sm:text-5xl">
+              JBALLIN Store
+            </h1>
+          </div>
+        </div>
 
-        <div className="mx-auto mt-6 max-w-xl rounded-2xl border border-emerald-400/30 bg-emerald-400/5 px-6 py-4">
+        <div className="mx-auto mt-8 max-w-xl rounded-2xl border border-emerald-400/30 bg-emerald-400/5 px-6 py-4">
           <p className="text-base font-semibold text-emerald-300 sm:text-lg">
             Every order directly supports the channel
           </p>
