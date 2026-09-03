@@ -25,7 +25,7 @@ export function HeroBannerCarousel() {
   }, []);
 
   return (
-    <div className="relative aspect-[16/5] w-full overflow-hidden rounded-3xl border border-[#E0DCD6] shadow-[0_4px_12px_rgba(0,0,0,0.06)]">
+    <div className="relative mt-10 aspect-[16/5] w-full overflow-hidden rounded-3xl border border-white/10">
       {SLIDES.map((slide, i) => (
         <div
           key={slide.src}
@@ -53,7 +53,7 @@ export function HeroBannerCarousel() {
             onClick={() => setActive(i)}
             aria-label={`Show slide ${i + 1}`}
             className={`h-1.5 rounded-full transition-all duration-300 ${
-              i === active ? "w-6 bg-white" : "w-1.5 bg-white/50 hover:bg-white/70"
+              i === active ? "w-6 bg-emerald-400" : "w-1.5 bg-white/30 hover:bg-white/50"
             }`}
           />
         ))}
