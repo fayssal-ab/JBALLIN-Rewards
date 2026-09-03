@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getActiveMerchItems } from "@/lib/merch";
+import { getActiveMerchItems, getMerchCategories } from "@/lib/merch";
 import { MerchGrid } from "@/components/MerchGrid";
 import { Icon, type IconName } from "@/components/Icon";
 
@@ -17,7 +17,10 @@ const FEATURES: { icon: IconName; label: string }[] = [
 ];
 
 export default async function StorePage() {
-  const items = await getActiveMerchItems();
+  const [items, categories] = await Promise.all([
+    getActiveMerchItems(),
+    getMerchCategories(),
+  ]);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-32">
@@ -61,7 +64,7 @@ export default async function StorePage() {
         </div>
       </div>
 
-      <MerchGrid items={items} />
+      <MerchGrid items={items} categories={categories} />
     </div>
   );
 }

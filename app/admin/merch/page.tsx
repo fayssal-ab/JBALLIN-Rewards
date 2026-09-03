@@ -1,4 +1,9 @@
-import { getAllMerchItems } from "@/lib/merch";
+import {
+  getAllMerchItems,
+  getMerchCategories,
+  getShopifyConnection,
+  getLastShopifySyncLog,
+} from "@/lib/merch";
 import { isAdminSession } from "@/lib/admin";
 import { MerchAdmin } from "@/components/MerchAdmin";
 
@@ -10,7 +15,12 @@ export default async function AdminMerchPage() {
   // check has to happen here too, before any query.
   if (!(await isAdminSession())) return null;
 
-  const items = await getAllMerchItems();
+  const [items, categories, connection, lastSync] = await Promise.all([
+    getAllMerchItems(),
+    getMerchCategories(),
+    getShopifyConnection(),
+    getLastShopifySyncLog(),
+  ]);
 
   return (
     <div>
@@ -20,7 +30,13 @@ export default async function AdminMerchPage() {
       <h1 className="font-display text-3xl uppercase text-white sm:text-4xl">
         Store
       </h1>
-      <MerchAdmin items={items} />
+      <MerchAdmin
+        connected={connection !== null}
+        shopDomain={connection?.shop_domain ?? null}
+        lastSync={lastSync}
+        items={items}
+        categories={categories}
+      />
     </div>
   );
 }
