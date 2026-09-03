@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getActiveMerchItems, getMerchCategories } from "@/lib/merch";
 import { MerchGrid } from "@/components/MerchGrid";
+import { HeroBannerCarousel } from "@/components/HeroBannerCarousel";
 import { Icon, type IconName } from "@/components/Icon";
 
 export const dynamic = "force-dynamic";
@@ -41,27 +42,20 @@ export default async function StorePage() {
           </div>
         </div>
 
-        <div className="mx-auto mt-8 max-w-xl rounded-2xl border border-emerald-400/30 bg-emerald-400/5 px-6 py-4">
-          <p className="text-base font-semibold text-emerald-300 sm:text-lg">
-            Every order directly supports the channel
-          </p>
-          <p className="mt-1 text-sm text-white/50">
-            Rep the brand and help keep the stream running and the giveaways
-            coming.
-          </p>
-        </div>
+      </div>
 
-        <div className="mx-auto mt-8 flex max-w-xl flex-wrap items-center justify-center gap-3">
-          {FEATURES.map((f) => (
-            <span
-              key={f.label}
-              className="flex items-center gap-2 rounded-full border border-white/10 bg-zinc-900/40 px-4 py-2 text-xs text-white/60"
-            >
-              <Icon name={f.icon} className="h-4 w-4 text-emerald-300" />
-              {f.label}
-            </span>
-          ))}
-        </div>
+      <HeroBannerCarousel />
+
+      <div className="mx-auto mt-6 flex max-w-2xl flex-wrap items-center justify-center gap-3">
+        {FEATURES.map((f) => (
+          <span
+            key={f.label}
+            className="flex items-center gap-2 rounded-full border border-white/10 bg-zinc-900/40 px-4 py-2 text-xs text-white/60"
+          >
+            <Icon name={f.icon} className="h-4 w-4 text-emerald-300" />
+            {f.label}
+          </span>
+        ))}
       </div>
 
       <MerchGrid items={items} categories={categories} />

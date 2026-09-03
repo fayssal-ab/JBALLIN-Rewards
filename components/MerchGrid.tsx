@@ -45,7 +45,7 @@ function CategoryBanner({
   return (
     <button
       onClick={onClick}
-      className={`group relative flex h-28 w-44 shrink-0 items-end overflow-hidden rounded-2xl border transition-all duration-300 ${
+      className={`group relative flex h-32 w-52 shrink-0 snap-start items-end overflow-hidden rounded-2xl border transition-all duration-300 ${
         active
           ? "border-emerald-400/60 shadow-[0_0_25px_rgba(52,211,153,0.25)]"
           : "border-white/10 hover:border-emerald-400/30"
@@ -94,10 +94,10 @@ export function MerchGrid({
   return (
     <div>
       {categories.length > 0 ? (
-        <div className="mt-16 flex gap-3 overflow-x-auto pb-2">
+        <div className="mt-16 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2">
           <button
             onClick={() => setActiveCategory(null)}
-            className={`flex h-28 w-28 shrink-0 items-center justify-center rounded-2xl border text-sm font-bold uppercase transition-all duration-300 ${
+            className={`flex h-32 w-32 shrink-0 snap-start items-center justify-center rounded-2xl border text-sm font-bold uppercase transition-all duration-300 ${
               activeCategory === null
                 ? "border-emerald-400/60 bg-emerald-400/10 text-emerald-300 shadow-[0_0_25px_rgba(52,211,153,0.25)]"
                 : "border-white/10 text-white/50 hover:border-emerald-400/30"
