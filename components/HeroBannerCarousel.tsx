@@ -14,18 +14,22 @@ const SLIDES = [
 
 const INTERVAL_MS = 5000;
 
+function goto(index: number, length: number): number {
+  return ((index % length) + length) % length;
+}
+
 export function HeroBannerCarousel() {
   const [active, setActive] = useState(0);
 
   useEffect(() => {
     const id = setInterval(() => {
-      setActive((i) => (i + 1) % SLIDES.length);
+      setActive((i) => goto(i + 1, SLIDES.length));
     }, INTERVAL_MS);
     return () => clearInterval(id);
   }, []);
 
   return (
-    <div className="relative mt-10 aspect-[16/5] w-full overflow-hidden rounded-3xl border border-white/10">
+    <div className="group/carousel relative mt-10 aspect-[16/5] w-full overflow-hidden rounded-3xl border border-white/10">
       {SLIDES.map((slide, i) => (
         <div
           key={slide.src}
@@ -45,6 +49,25 @@ export function HeroBannerCarousel() {
           />
         </div>
       ))}
+
+      <button
+        onClick={() => setActive((i) => goto(i - 1, SLIDES.length))}
+        aria-label="Previous slide"
+        className="absolute top-1/2 left-4 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white opacity-0 backdrop-blur-sm transition-all duration-300 group-hover/carousel:opacity-100 hover:border-emerald-400/50 hover:bg-black/60"
+      >
+        <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+          <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      <button
+        onClick={() => setActive((i) => goto(i + 1, SLIDES.length))}
+        aria-label="Next slide"
+        className="absolute top-1/2 right-4 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white opacity-0 backdrop-blur-sm transition-all duration-300 group-hover/carousel:opacity-100 hover:border-emerald-400/50 hover:bg-black/60"
+      >
+        <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+          <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
 
       <div className="absolute inset-x-0 bottom-4 flex items-center justify-center gap-2">
         {SLIDES.map((slide, i) => (

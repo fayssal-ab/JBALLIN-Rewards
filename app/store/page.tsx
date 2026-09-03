@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getActiveMerchItems, getMerchCategories } from "@/lib/merch";
 import { MerchGrid } from "@/components/MerchGrid";
 import { HeroBannerCarousel } from "@/components/HeroBannerCarousel";
+import { ScrollReveal } from "@/components/ScrollReveal";
 import { Icon, type IconName } from "@/components/Icon";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ export default async function StorePage() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-32">
-      <div className="text-center">
+      <div className="animate-fade-in-up text-center">
         <div className="flex items-center justify-center gap-4">
           <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-emerald-400/40 bg-gradient-to-br from-emerald-400/20 to-emerald-400/5 shadow-[0_0_30px_rgba(52,211,153,0.25)]">
             <div className="animate-glow-pulse absolute inset-0 rounded-2xl" />
@@ -35,12 +36,14 @@ export default async function StorePage() {
             JBALLIN Store
           </h1>
         </div>
-
+        <p className="mx-auto mt-3 max-w-md text-sm text-white/50">
+          Official merch for the channel — new drops added regularly.
+        </p>
       </div>
 
       <HeroBannerCarousel />
 
-      <div className="mx-auto mt-6 flex max-w-2xl flex-wrap items-center justify-center gap-3">
+      <ScrollReveal className="mx-auto mt-6 flex max-w-2xl flex-wrap items-center justify-center gap-3">
         {FEATURES.map((f) => (
           <span
             key={f.label}
@@ -50,7 +53,7 @@ export default async function StorePage() {
             {f.label}
           </span>
         ))}
-      </div>
+      </ScrollReveal>
 
       <MerchGrid items={items} categories={categories} />
     </div>
