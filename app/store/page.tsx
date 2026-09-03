@@ -25,7 +25,7 @@ export default async function StorePage() {
   ]);
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-32">
+    <div className="mx-auto max-w-7xl px-6 py-32">
       <div className="animate-fade-in-up text-center">
         <div className="flex items-center justify-center gap-4">
           <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-emerald-400/40 bg-gradient-to-br from-emerald-400/20 to-emerald-400/5 shadow-[0_0_30px_rgba(52,211,153,0.25)]">
