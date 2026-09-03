@@ -6,7 +6,9 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 // and verifies that a callback request really came from Shopify.
 
 const API_VERSION = "2026-07";
-export const SHOPIFY_SCOPES = "read_products,read_collections";
+// "read_collections" isn't a real Shopify scope — collections (custom_
+// collections.json, smart_collections.json) are covered by read_products.
+export const SHOPIFY_SCOPES = "read_products";
 export const OAUTH_STATE_COOKIE = "shopify_oauth_state";
 
 function requiredEnv(name: string): string {
