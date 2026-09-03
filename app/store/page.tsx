@@ -31,15 +31,9 @@ export default async function StorePage() {
             <div className="animate-glow-pulse absolute inset-0 rounded-2xl" />
             <Icon name="shirt" className="h-7 w-7 text-emerald-300" />
           </div>
-          <div className="text-left">
-            <p className="flex items-center gap-1.5 text-xs font-bold tracking-[0.3em] text-emerald-400/70 uppercase">
-              <Icon name="bolt" className="h-3 w-3" />
-              Official Store
-            </p>
-            <h1 className="animate-shimmer-text font-display bg-gradient-to-r from-white via-emerald-200 to-white bg-clip-text text-4xl text-transparent uppercase sm:text-5xl">
-              JBALLIN Store
-            </h1>
-          </div>
+          <h1 className="animate-shimmer-text font-display bg-gradient-to-r from-white via-emerald-200 to-white bg-clip-text text-4xl text-transparent uppercase sm:text-5xl">
+            JBALLIN Store
+          </h1>
         </div>
 
       </div>
