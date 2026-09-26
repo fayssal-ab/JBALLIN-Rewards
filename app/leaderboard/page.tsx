@@ -9,7 +9,9 @@ import {
   getClosedPeriods,
   getClosedPeriod,
   getFinalResults,
+  getNextUpcomingPeriod,
 } from "@/lib/periods";
+import { addDays, formatDate, gapLabel, periodLabel } from "@/lib/periodLabels";
 import { Countdown } from "@/components/Countdown";
 import { LeaderboardTable, type LeaderboardRow } from "@/components/LeaderboardTable";
 import { PreviousMonths } from "@/components/PreviousMonths";
@@ -24,14 +26,6 @@ const currencyWhole = new Intl.NumberFormat("en-US", {
   currency: "USD",
   maximumFractionDigits: 0,
 });
-
-function monthLabel(dateStr: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${dateStr}T00:00:00Z`));
-}
 
 function RainbetLogo() {
   return (
@@ -89,7 +83,7 @@ export default async function LeaderboardPage({
             {currencyWhole.format(Number(period.prize_pool))}
           </p>
           <p className="mt-6 text-xs tracking-[0.3em] text-white/40 uppercase">
-            {monthLabel(period.start_at)} — final results
+            {periodLabel(period.start_at, period.end_at)} — final results
           </p>
           <h1 className="font-display mt-2 text-4xl uppercase text-white sm:text-5xl">
             Monthly Leaderboard
@@ -115,6 +109,38 @@ export default async function LeaderboardPage({
   const period = await getActivePeriod();
 
   if (!period) {
+    // Nothing live and at least one whole day skipped before the next
+    // period starts = a deliberate pause (see db/migrations/0021), not the
+    // normal overnight rollover gap.
+    const next = await getNextUpcomingPeriod();
+    const lastClosed = closedPeriods[0];
+    const pause =
+      next && lastClosed
+        ? gapLabel(addDays(lastClosed.end_at, 1), addDays(next.start_at, -1))
+        : null;
+
+    if (next && pause) {
+      return (
+        <div className="mx-auto max-w-6xl px-6 py-32">
+          <div className="text-center">
+            <RainbetLogo />
+            <p className="mt-6 text-xs tracking-[0.3em] text-white/40 uppercase">
+              Leaderboard
+            </p>
+            <h1 className="font-display mt-2 text-5xl uppercase text-emerald-300 sm:text-7xl">
+              Pause for {pause}
+            </h1>
+            <p className="mx-auto mt-4 max-w-lg text-white/60">
+              The leaderboard is taking a break. It&apos;s back on{" "}
+              {formatDate(next.start_at)}.
+            </p>
+          </div>
+
+          <PreviousMonths periods={closedPeriods} viewingPeriodId={null} />
+        </div>
+      );
+    }
+
     return (
       <div className="mx-auto max-w-2xl px-6 py-32 text-center">
         <p className="text-xs tracking-[0.3em] text-white/40 uppercase">
@@ -152,7 +178,7 @@ export default async function LeaderboardPage({
           {currencyWhole.format(Number(period.prize_pool))}
         </p>
         <p className="mt-6 text-xs tracking-[0.3em] text-white/40 uppercase">
-          {monthLabel(period.start_at)} — live — top 10
+          {periodLabel(period.start_at, period.end_at)} — live — top 10
         </p>
         <h1 className="font-display mt-2 text-4xl uppercase text-white sm:text-5xl">
           Monthly Leaderboard

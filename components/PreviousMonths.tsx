@@ -1,19 +1,12 @@
 import Link from "next/link";
 import type { ClosedPeriodSummary } from "@/lib/periods";
+import { periodLabel } from "@/lib/periodLabels";
 
 const currencyWhole = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
   maximumFractionDigits: 0,
 });
-
-function monthLabel(dateStr: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${dateStr}T00:00:00Z`));
-}
 
 export function PreviousMonths({
   periods,
@@ -44,7 +37,7 @@ export function PreviousMonths({
               }`}
             >
               <p className="font-display text-lg text-white">
-                {monthLabel(period.start_at)}
+                {periodLabel(period.start_at, period.end_at)}
               </p>
               <p className="mt-1 text-xs text-white/40">
                 {period.winner_count} winners

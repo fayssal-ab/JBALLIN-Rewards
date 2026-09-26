@@ -27,6 +27,13 @@ export async function getActivePeriod(): Promise<Period | null> {
   return (rows[0] as Period | undefined) ?? null;
 }
 
+export async function getNextUpcomingPeriod(): Promise<Period | null> {
+  const [rows] = await getPool().query<RowDataPacket[]>(
+    "SELECT * FROM periods WHERE status = 'upcoming' ORDER BY start_at ASC LIMIT 1"
+  );
+  return (rows[0] as Period | undefined) ?? null;
+}
+
 export interface LiveEntry {
   rainbet_id: string;
   username: string;
